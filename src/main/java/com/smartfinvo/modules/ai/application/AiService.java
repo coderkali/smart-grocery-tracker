@@ -21,7 +21,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -260,10 +262,159 @@ public class AiService implements AiModulePort {
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
-  @Override
-  public Mono<BudgetAnalysisResult> analyzeBudget(BudgetAnalysisCommand command) {
-    return null;
-  }
+    @Override
+    public Mono<BudgetAnalysisResult> analyzeBudget(BudgetAnalysisCommand command) {
+        return Mono.fromCallable(() -> {
+
+            // Step 1 — Search pgvector for spending data
+            FilterExpressionBuilder b = new FilterExpressionBuilder();
+            SearchRequest searchRequest = SearchRequest.builder()
+                    .query("spending summary grocery budget monthly expenses")
+                    .topK(6)
+                    .filterExpression(
+                            b.eq("userId", command.userId().toString()).build()
+                    )
+                    .build();
+
+            List<Document> spendingDocs = vectorStore.similaritySearch(searchRequest);
+
+            String spendingContext = spendingDocs.isEmpty()
+                    ? "No spending data found."
+                    : spendingDocs.stream()
+                    .map(Document::getContent)
+                    .collect(Collectors.joining("\n\n"));
+
+            String monthlyBudget = command.monthlyBudget() != null
+                    ? command.monthlyBudget().toPlainString()
+                    : "Not set";
+
+            // Step 2 — Ask GPT-4o to analyse spending
+            String systemPrompt = AiPrompts.BUDGET_ANALYSIS_SYSTEM.formatted(
+                    spendingContext,
+                    monthlyBudget,
+                    command.period()
+            );
+
+            String analysisResponse = ChatClient.create(chatModel)
+                    .prompt()
+                    .system(systemPrompt)
+                    .user("Analyse my spending and give me insights")
+                    .call()
+                    .content();
+
+            // Step 3 — Evaluator pass — verify AI didn't hallucinate numbers
+            String evaluatorPrompt = AiPrompts.BUDGET_EVALUATOR_SYSTEM.formatted(
+                    spendingContext,
+                    analysisResponse
+            );
+
+            String evaluatorResponse = ChatClient.create(chatModel)
+                    .prompt()
+                    .system(evaluatorPrompt)
+                    .user("Verify this analysis")
+                    .call()
+                    .content();
+
+            // Step 4 — Parse evaluator result
+            boolean evaluatorPassed = parseEvaluatorResult(evaluatorResponse);
+
+            // Step 5 — Parse analysis into structured result
+            BudgetAnalysisResult result = parseAnalysisResult(
+                    analysisResponse,
+                    evaluatorPassed,
+                    command.monthlyBudget()
+            );
+
+            // Step 6 — Save to conversation history
+            saveConversation(command.userId(), command.period(),
+                    "BUDGET", "user", "Analyse my budget", 0);
+            saveConversation(command.userId(), command.period(),
+                    "BUDGET", "assistant", analysisResponse, 0);
+
+            return result;
+
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+// ── Evaluator Parser ──────────────────────────────────────────────────
+
+    private boolean parseEvaluatorResult(String json) {
+        try {
+            String clean = json.replaceAll("```json", "").replaceAll("```", "").trim();
+            Map<String, Object> result = objectMapper.readValue(clean, Map.class);
+            boolean passed = (boolean) result.getOrDefault("passed", false);
+            if (!passed) {
+                List<String> issues = (List<String>) result.getOrDefault("issues", List.of());
+                log.warn("Evaluator FAILED — issues: {}", issues);
+            }
+            return passed;
+        } catch (Exception e) {
+            log.error("Failed to parse evaluator response: {}", json, e);
+            return false;
+        }
+    }
+
+// ── Analysis Parser ───────────────────────────────────────────────────
+
+    private BudgetAnalysisResult parseAnalysisResult(
+            String json,
+            boolean evaluatorPassed,
+            BigDecimal monthlyBudget) {
+        try {
+            String clean = json.replaceAll("```json", "").replaceAll("```", "").trim();
+            Map<String, Object> parsed = objectMapper.readValue(clean, Map.class);
+
+            String summary = (String) parsed.getOrDefault("summary", "No summary available");
+            double totalSpentRaw = ((Number) parsed.getOrDefault("totalSpent", 0)).doubleValue();
+            BigDecimal totalSpent = BigDecimal.valueOf(totalSpentRaw);
+
+            // Calculate budget variance
+            BigDecimal budgetVariance = monthlyBudget != null
+                    ? totalSpent.subtract(monthlyBudget)
+                    : BigDecimal.ZERO;
+
+            // Parse insights
+            List<Map<String, String>> rawInsights =
+                    (List<Map<String, String>>) parsed.getOrDefault("insights", List.of());
+
+            List<Insight> insights = rawInsights.stream()
+                    .map(i -> new Insight(
+                            i.getOrDefault("category", "General"),
+                            i.getOrDefault("finding", ""),
+                            i.getOrDefault("suggestion", ""),
+                            parseInsightType(i.getOrDefault("type", "PATTERN"))
+                    ))
+                    .toList();
+
+            return new BudgetAnalysisResult(
+                    summary,
+                    insights,
+                    totalSpent,
+                    budgetVariance,
+                    evaluatorPassed,
+                    0
+            );
+
+        } catch (Exception e) {
+            log.error("Failed to parse budget analysis response: {}", json, e);
+            return new BudgetAnalysisResult(
+                    "Failed to parse analysis. Please try again.",
+                    List.of(),
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    false,
+                    0
+            );
+        }
+    }
+
+    private InsightType parseInsightType(String type) {
+        try {
+            return InsightType.valueOf(type.toUpperCase());
+        } catch (Exception e) {
+            return InsightType.PATTERN;
+        }
+    }
 
   @Override
   public Flux<ConversationTurn> getConversationHistory(UUID userId, String sessionId) {

@@ -177,70 +177,71 @@ public final class AiPrompts {
      *   3 — period          (last_month, last_3_months etc.)
      */
     public static final String BUDGET_ANALYSIS_SYSTEM = """
-        You are a grocery budget analyst.
-        Your job is to analyse the user's grocery spending patterns
-        and provide specific, accurate, actionable insights.
-        
-        USER'S SPENDING DATA:
-        %s
-        
-        DECLARED MONTHLY BUDGET: $%s
-        ANALYSIS PERIOD: %s
-        
-        ANALYSIS RULES:
-        - ONLY cite numbers that exist in the spending data above
-        - NEVER estimate or invent figures not in the data
-        - Calculate percentages only from numbers in the data
-        - If data is insufficient, state this clearly
-        - Flag overspend (actual > budget) as OVERSPEND type
-        - Flag underspend as SAVING type
-        - Flag recurring patterns as PATTERN type
-        - Flag near-limit as ALERT type
-        
-        RETURN valid JSON only. No markdown. No explanation outside JSON:
+    You are a precise financial analyst for a household budget tracking app.
+    
+    The user's REAL spending data for the period:
+    %s
+    
+    User's declared monthly budget: $%s
+    Period requested: %s
+    
+    Your job:
+    1. Analyse the spending data accurately
+    2. Answer the user's question directly
+    3. Identify patterns, overspending, and savings opportunities
+    4. Give specific actionable suggestions
+    
+    CRITICAL RULES:
+    - ONLY use numbers that appear in the spending data above
+    - NEVER invent or estimate figures not in the data
+    - If data is insufficient, say so clearly
+    - Always cite which store or category the figure comes from
+    
+    Respond ONLY with a valid JSON object. No markdown, no backticks.
+    Format:
+    {
+      "summary": "Plain English overview of their spending",
+      "totalSpent": 427.49,
+      "insights": [
         {
-          "summary": "Clear one-paragraph spending overview",
-          "totalSpent": 245.50,
-          "budgetVariance": -29.50,
-          "insights": [
-            {
-              "category": "snacks",
-              "finding": "Snack spending was $45, up from $33 last month",
-              "suggestion": "Setting a $40 snack budget could save $60/year",
-              "type": "OVERSPEND"
-            }
-          ]
+          "category": "Groceries",
+          "finding": "Spent $427.49 on groceries across 7 trips",
+          "suggestion": "Consider consolidating trips to save on impulse buys",
+          "type": "PATTERN"
         }
-        """;
+      ]
+    }
+    
+    Insight types:
+    OVERSPEND — spending more than expected in a category
+    SAVING    — spending less than expected, good job
+    PATTERN   — interesting pattern worth noting
+    ALERT     — immediate action needed
+    """;
 
-    // ════════════════════════════════════════════════════════════════
-    // Evaluator — checks budget analysis is grounded in data
-    // ════════════════════════════════════════════════════════════════
-
-    /**
-     * Used by: runEvaluator() in AiService
-     * GPT-4o role: fact checker
-     *
-     * %s placeholders:
-     *   1 — sourceData     (the actual spending records)
-     *   2 — aiResponse     (the budget analysis to check)
-     */
-    public static final String EVALUATOR_SYSTEM = """
-        You are a strict fact-checker for a financial AI assistant.
-        
-        Your ONLY job is to verify that every factual claim,
-        number, and percentage in the AI response is directly
-        supported by the source data provided.
-        
-        RESPOND WITH EXACTLY ONE WORD: PASS or FAIL
-        
-        PASS = every number and claim in the response can be
-               verified from the source data
-        FAIL = response contains any number, percentage, or claim
-               that cannot be found or calculated from source data
-        
-        Do not explain. Do not add context. One word only: PASS or FAIL
-        """;
+    public static final String BUDGET_EVALUATOR_SYSTEM = """
+    You are a strict fact-checker for financial data.
+    
+    Original spending data:
+    %s
+    
+    AI generated analysis to verify:
+    %s
+    
+    Check every number in the analysis against the original data.
+    
+    Respond ONLY with valid JSON. No markdown, no backticks.
+    {
+      "passed": true,
+      "issues": []
+    }
+    
+    If numbers don't match the source data, set passed=false and list issues:
+    {
+      "passed": false,
+      "issues": ["totalSpent shows $500 but source data shows $427.49"]
+    }
+    """;
 
     public static final String EVALUATOR_USER = """
         SOURCE DATA:

@@ -3,7 +3,9 @@ package com.smartfinvo.modules.ai.infrastructure.seeder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
@@ -37,7 +39,27 @@ public class DataSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("DataSeeder starting — seeding purchase history into pgvector");
+        log.info("DataSeeder starting — checking if seeding needed...");
+
+        // Check if already seeded — avoid duplicate OpenAI calls on every restart
+        SearchRequest checkRequest = SearchRequest.builder()
+                .query("walmart grocery")
+                .topK(1)
+                .filterExpression(
+                        new FilterExpressionBuilder()
+                                .eq("userId", TEST_USER_ID)
+                                .build()
+                )
+                .build();
+
+        List<Document> existing = vectorStore.similaritySearch(checkRequest);
+
+        if (!existing.isEmpty()) {
+            log.info("DataSeeder skipping — data already seeded ({} docs found)", existing.size());
+            return;
+        }
+
+        log.info("DataSeeder seeding fresh data...");
         seedGroceryPurchaseHistory();
         seedSpendingPatterns();
         log.info("DataSeeder complete — vector store populated with real Feb 2026 data");

@@ -3,10 +3,13 @@ package com.smartfinvo.modules.ai.infrastructure.web;
 import com.smartfinvo.modules.ai.api.AiModulePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,5 +70,54 @@ public class AiController {
             UUID listId,
             List<String> currentItems,
             int maxSuggestions
+    ) {}
+
+    @PostMapping(value = "/recipe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> getRecipeSuggestion(
+            @RequestBody RecipeRequest request,
+            @RequestAttribute(required = false) UUID userId) {
+
+        UUID resolvedUserId = userId != null ? userId
+                : UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        return aiModulePort.getRecipeSuggestion(
+                new AiModulePort.RecipeCommand(
+                        resolvedUserId,
+                        request.listId(),
+                        request.userMessage(),
+                        request.sessionId(),
+                        request.currentItems()
+                )
+        );
+    }
+
+    public record RecipeRequest(
+            UUID listId,
+            String userMessage,
+            String sessionId,
+            List<String> currentItems
+    ) {}
+
+
+    @PostMapping("/budget")
+    public Mono<ResponseEntity<AiModulePort.BudgetAnalysisResult>> analyzeBudget(
+            @RequestBody BudgetRequest request,
+            @RequestAttribute(required = false) UUID userId) {
+
+        UUID resolvedUserId = userId != null ? userId
+                : UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        return aiModulePort.analyzeBudget(
+                new AiModulePort.BudgetAnalysisCommand(
+                        resolvedUserId,
+                        request.period(),
+                        request.monthlyBudget()
+                )
+        ).map(ResponseEntity::ok);
+    }
+
+    public record BudgetRequest(
+            String period,
+            BigDecimal monthlyBudget
     ) {}
 }

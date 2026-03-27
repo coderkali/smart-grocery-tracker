@@ -2,19 +2,16 @@ package com.smartfinvo.modules.ai.infrastructure.memory;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -43,18 +40,15 @@ public class RedisChatMemory implements ChatMemory {
     public void add(String conversationId, List<Message> messages) {
         String key = KEY_PREFIX + conversationId;
         try {
-            // Load existing messages
             List<Map<String, String>> stored = loadRaw(key);
 
-            // Append new messages
             for (Message message : messages) {
                 stored.add(Map.of(
-                    "role",    message.getMessageType().getValue(),
-                    "content", message.getText()
+                        "role",    message.getMessageType().getValue(),
+                        "content", message.getText()
                 ));
             }
 
-            // Save back with TTL refresh
             String json = objectMapper.writeValueAsString(stored);
             redisTemplate.opsForValue().set(key, json, ttlHours, TimeUnit.HOURS);
 
@@ -70,15 +64,13 @@ public class RedisChatMemory implements ChatMemory {
         try {
             List<Map<String, String>> stored = loadRaw(key);
 
-            // Take last N messages
             List<Map<String, String>> recent = stored.size() > lastN
-                ? stored.subList(stored.size() - lastN, stored.size())
-                : stored;
+                    ? stored.subList(stored.size() - lastN, stored.size())
+                    : stored;
 
-            // Convert back to Spring AI Message objects
             return recent.stream()
-                .map(this::toMessage)
-                .toList();
+                    .map(this::toMessage)
+                    .toList();
 
         } catch (Exception e) {
             log.error("Failed to load chat memory for key: {}", key, e);
@@ -93,15 +85,15 @@ public class RedisChatMemory implements ChatMemory {
         log.debug("Cleared chat memory for key: {}", key);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────
 
     private List<Map<String, String>> loadRaw(String key) {
         try {
             String existing = redisTemplate.opsForValue().get(key);
             if (existing == null) return new ArrayList<>();
             return objectMapper.readValue(
-                existing,
-                new TypeReference<List<Map<String, String>>>() {}
+                    existing,
+                    new TypeReference<List<Map<String, String>>>() {}
             );
         } catch (Exception e) {
             log.warn("Could not parse existing chat memory for key: {}", key);
