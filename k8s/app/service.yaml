@@ -1,13 +1,8 @@
 # ══════════════════════════════════════════════════════════════════
 # SmartFinvo — Application Service
 #
-# type: LoadBalancer creates an AWS ALB automatically.
-# This is the ONLY public entry point to the cluster.
-# All other services (postgres, redis) are ClusterIP only.
-#
-# After applying this file, AWS creates a Load Balancer.
-# Get the public URL with:
-#   kubectl get service smartfinvo-service -n smartfinvo
+# type: LoadBalancer creates an AWS Classic Load Balancer.
+# No annotations needed — Kubernetes handles it automatically.
 # ══════════════════════════════════════════════════════════════════
 
 apiVersion: v1
@@ -17,18 +12,12 @@ metadata:
   namespace: smartfinvo
   labels:
     app: smartfinvo
-  annotations:
-    # Tell AWS to create an internet-facing Load Balancer
-    service.beta.kubernetes.io/aws-load-balancer-type: "external"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    # Use HTTP for now — we add SSL/HTTPS later
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
 spec:
   selector:
-    app: smartfinvo           # Routes to pods labelled app=smartfinvo
+    app: smartfinvo
   ports:
     - name: http
-      port: 80                # Load Balancer listens on port 80 (HTTP)
-      targetPort: 8080        # Forwards to Spring Boot port 8080
+      port: 80
+      targetPort: 8080
       protocol: TCP
-  type: LoadBalancer          # Creates AWS Load Balancer automatically
+  type: LoadBalancer

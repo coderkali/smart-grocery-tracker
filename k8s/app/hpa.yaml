@@ -38,13 +38,13 @@ spec:
           type: Utilization
           averageUtilization: 70    # Scale up when avg CPU > 70%
 
-    # ── Memory metric ───────────────────────────────────────────
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 80    # Scale up when avg memory > 80%
+#    # ── Memory metric ───────────────────────────────────────────
+#    - type: Resource
+#      resource:
+#        name: memory
+#        target:
+#          type: Utilization
+#          averageUtilization: 95    # Scale up when avg memory > 80%
 
   # ── Scaling behaviour ─────────────────────────────────────────
   behavior:

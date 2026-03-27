@@ -32,7 +32,7 @@ variable "kubernetes_version" {
 variable "node_instance_type" {
   description = "EC2 instance type for worker nodes"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
   # t3.small = 2 vCPU, 2GB RAM = $0.023/hour
   # t3.medium = 2 vCPU, 4GB RAM = $0.047/hour (if app needs more memory)
 }

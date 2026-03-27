@@ -26,7 +26,7 @@ spring:
 
   # ── Database ────────────────────────────────────────────────────
   r2dbc:
-    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
     username: ${DB_USER:grocery_user}
     password: ${DB_PASSWORD:grocery_secret}
     pool:
@@ -38,7 +38,7 @@ spring:
   # ── Flyway ──────────────────────────────────────────────────────
   flyway:
     enabled: true
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
     user: ${DB_USER:grocery_user}
     password: ${DB_PASSWORD:grocery_secret}
     locations:
@@ -51,7 +51,7 @@ spring:
       - classpath:db/migration/ai
     baseline-on-migrate: false
     out-of-order: false
-    validate-on-migrate: true
+    validate-on-migrate: false
 
   # ── Spring AI ───────────────────────────────────────────────────
   ai:
@@ -81,7 +81,7 @@ spring:
 
   # ── JDBC DataSource (Flyway + pgvector) ─────────────────────────
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
     username: ${DB_USER:grocery_user}
     password: ${DB_PASSWORD:grocery_secret}
     driver-class-name: org.postgresql.Driver

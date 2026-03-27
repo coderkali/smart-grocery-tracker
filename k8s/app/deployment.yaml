@@ -77,14 +77,17 @@ spec:
                 name: smartfinvo-config
             - secretRef:
                 name: smartfinvo-secrets
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms128m -Xmx384m -XX:+UseContainerSupport"
 
           # ── Resource limits ───────────────────────────────────
           resources:
             requests:
-              memory: "256Mi"   # Reserve 512MB per pod
+              memory: "128Mi"   # Reserve 512MB per pod
               cpu: "150m"       # Reserve 0.25 CPU core per pod
             limits:
-              memory: "512Mi"     # Never exceed 1GB per pod
+              memory: "768Mi"     # Never exceed 1GB per pod
               cpu: "300m"       # Never exceed 0.5 CPU core per pod
 
           # ── Liveness probe ────────────────────────────────────
