@@ -1,0 +1,139 @@
+
+# ── Smart Grocery Tracker — Local Development Stack ───────────────────────────
+#
+# Services:
+#   postgres   — Primary database (PostgreSQL 15)
+#   redis      — Token cache + rate limiting
+#   app        — Spring Boot backend
+#   mailhog    — Local SMTP server (catches outbound emails)
+#   pgadmin    — PostgreSQL web UI (optional)
+#
+# Usage:
+#   docker compose up -d              # start all services
+#   docker compose up -d postgres redis  # start just infra
+#   docker compose logs -f app        # tail app logs
+#   docker compose down -v            # stop and delete volumes
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: sgt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       smart_grocery
+      POSTGRES_USER:     grocery_user
+      POSTGRES_PASSWORD: grocery_secret
+      PGDATA:            /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grocery_user -d smart_grocery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sgt-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass redis_secret
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Spring Boot Application ────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sgt-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE:       local
+      SPRING_DATASOURCE_URL:        jdbc:postgresql://postgres:5432/smart_grocery
+      SPRING_DATASOURCE_USERNAME:   grocery_user
+      SPRING_DATASOURCE_PASSWORD:   grocery_secret
+      SPRING_REDIS_HOST:            redis
+      SPRING_REDIS_PORT:            6379
+      SPRING_REDIS_PASSWORD:        redis_secret
+      JWT_SECRET:                   local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512-algo!
+      FRONTEND_URL:                 http://localhost:3000
+      MAIL_HOST:                    mailhog
+      MAIL_PORT:                    1025
+      MAIL_USERNAME:                ""
+      MAIL_PASSWORD:                ""
+      # OAuth2 — set these in .env file or override here for local testing
+      OAUTH2_GOOGLE_CLIENT_ID:      ${OAUTH2_GOOGLE_CLIENT_ID:-placeholder}
+      OAUTH2_GOOGLE_CLIENT_SECRET:  ${OAUTH2_GOOGLE_CLIENT_SECRET:-placeholder}
+      OAUTH2_GITHUB_CLIENT_ID:      ${OAUTH2_GITHUB_CLIENT_ID:-placeholder}
+      OAUTH2_GITHUB_CLIENT_SECRET:  ${OAUTH2_GITHUB_CLIENT_SECRET:-placeholder}
+      OPENAI_API_KEY:               ${OPENAI_API_KEY:-placeholder}
+      PLAID_CLIENT_ID:              ${PLAID_CLIENT_ID:-placeholder}
+      PLAID_SECRET:                 ${PLAID_SECRET:-placeholder}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - app_logs:/app/logs
+
+  # ── MailHog — catches all outbound emails locally ──────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: sgt-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI — open http://localhost:8025
+
+  # ── PgAdmin — optional Postgres web UI ────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: sgt-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@smartgrocery.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"   # Open http://localhost:5050
+    depends_on:
+      - postgres
+    profiles:
+      - tools    # Only starts with: docker compose --profile tools up
+
+# ── Volumes ────────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: sgt-postgres-data
+  redis_data:
+    name: sgt-redis-data
+  app_logs:
+    name: sgt-app-logs

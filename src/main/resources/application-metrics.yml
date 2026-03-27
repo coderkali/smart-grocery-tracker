@@ -1,0 +1,29 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+
+  # Micrometer — exports metrics to Prometheus
+  # In production: Prometheus scrapes this → Grafana dashboard
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      # These tags appear on every metric
+      # Lets you filter by app and environment in Grafana
+      application: smart-grocery-tracker
+      environment: ${SPRING_PROFILES_ACTIVE:local}
+    distribution:
+      # Track percentiles for HTTP response times
+      # p50, p95, p99 — standard SRE metrics
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99

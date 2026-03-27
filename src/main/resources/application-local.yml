@@ -1,0 +1,28 @@
+spring:
+  jpa:
+    show-sql: true
+  flyway:
+    locations: >
+      classpath:db/migration/system,
+      classpath:db/migration/auth,
+      classpath:db/migration/user,
+      classpath:db/migration/expense,
+      classpath:db/migration/notification,
+      classpath:db/migration/cardsync,
+      classpath:db/migration/ai
+
+logging:
+  level:
+    root: INFO
+    com.smartgrocery: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%-5level) %clr([%thread]){faint} %clr(%logger{36}){cyan} - %msg%n"
+
+app:
+  jwt:
+    secret: local-dev-secret-key-must-be-at-least-64-chars-long-for-security!!!!!
+  ai:
+    provider: openai

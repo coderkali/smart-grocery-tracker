@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: smart-grocery-tracker
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redis_secret
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: placeholder
+            client-secret: placeholder
+            scope: openid, email, profile
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+  # ── Database ──────────────────────────────────────────────────────────────
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
+    username: ${DB_USER:grocery_user}
+    password: ${DB_PASSWORD:grocery_secret}
+    pool:
+      initial-size: 2
+      max-size: 10
+      max-idle-time: 30m
+      validation-query: SELECT 1
+
+  # ── Flyway ────────────────────────────────────────────────────────────────
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
+    user: ${DB_USER:grocery_user}
+    password: ${DB_PASSWORD:grocery_secret}
+    locations:
+      - classpath:db/migration/system
+      - classpath:db/migration/auth
+      - classpath:db/migration/user
+      - classpath:db/migration/expense
+      - classpath:db/migration/notification
+      - classpath:db/migration/cardsync
+      - classpath:db/migration/ai
+    baseline-on-migrate: false
+    out-of-order: false
+    validate-on-migrate: true
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:placeholder}
+      chat:
+        options:
+          model: gpt-4o
+          temperature: 0.7
+          max-tokens: 1000
+      embedding:
+        options:
+          model: text-embedding-3-small  # cheapest, still excellent for RAG
+
+    vectorstore:
+      pgvector:
+        initialize-schema: false   # we handle schema via Flyway ourselves
+        index-type: HNSW           # fast approximate nearest neighbour search
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+
+    chat:
+      memory:
+        redis:
+          key-prefix: "chat_memory:"
+          ttl: 3600   # conversation memory lives 1 hour in Redis
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smart_grocery
+    username: grocery_user
+    password: grocery_secret
+    driver-class-name: org.postgresql.Driver
+app:
+  jwt:
+    secret: local-dev-secret-key-must-be-at-least-32-characters-long
+    access-token-expiry-ms: 900000       # 15 minutes
+    refresh-token-expiry-ms: 604800000   # 7 days
+
+
