@@ -81,11 +81,11 @@ spec:
           # ── Resource limits ───────────────────────────────────
           resources:
             requests:
-              memory: "512Mi"   # Reserve 512MB per pod
-              cpu: "250m"       # Reserve 0.25 CPU core per pod
+              memory: "256Mi"   # Reserve 512MB per pod
+              cpu: "150m"       # Reserve 0.25 CPU core per pod
             limits:
-              memory: "1Gi"     # Never exceed 1GB per pod
-              cpu: "500m"       # Never exceed 0.5 CPU core per pod
+              memory: "512Mi"     # Never exceed 1GB per pod
+              cpu: "300m"       # Never exceed 0.5 CPU core per pod
 
           # ── Liveness probe ────────────────────────────────────
           # Checks Spring Boot actuator liveness endpoint.
@@ -121,13 +121,3 @@ spec:
             preStop:
               exec:
                 command: ["sh", "-c", "sleep 10"]
-  ```
-
----
-
-## One thing to check — Spring Boot Actuator
-
-The health probes use:
-  ```
-  /actuator/health/liveness
-  /actuator/health/readiness

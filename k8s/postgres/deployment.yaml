@@ -19,11 +19,12 @@ metadata:
   labels:
     app: postgres
 spec:
+  storageClassName: gp2
   accessModes:
-    - ReadWriteOnce       # Only one pod can read/write at a time
+    - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi       # 10GB — enough for development + testing
+      storage: 10Gi
 
 ---
 # ── PostgreSQL Deployment ──────────────────────────────────────────
@@ -72,15 +73,16 @@ spec:
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
+              subPath: pgdata
 
           # Resource limits — prevent postgres hogging all node memory
           resources:
             requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
               memory: "256Mi"
               cpu: "250m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
 
           # Liveness probe — is postgres alive?
           # If this fails 3 times → pod is restarted
