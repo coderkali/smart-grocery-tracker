@@ -1,0 +1,57 @@
+# ══════════════════════════════════════════════════════════════════
+# SmartFinvo — Kubernetes ConfigMap
+#
+# Variable names match exactly what application.yml expects.
+# application.yml uses ${VAR_NAME:default} pattern.
+# Kubernetes sets these as environment variables.
+# Spring Boot reads them automatically.
+# ══════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smartfinvo-config
+  namespace: smartfinvo
+  labels:
+    app: smartfinvo
+    environment: production
+data:
+  # ── Spring Profile ────────────────────────────────────────────
+  SPRING_PROFILES_ACTIVE: "prod"
+
+  # ── Database ──────────────────────────────────────────────────
+  # These match ${DB_HOST:localhost} pattern in application.yml
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "smartfinvo"
+  DB_USER: "grocery_user"
+
+  # ── Redis ─────────────────────────────────────────────────────
+  # Overrides spring.data.redis.host=localhost
+  SPRING_DATA_REDIS_HOST: "redis-service"
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_DATABASE: "0"
+
+  # ── Redis Chat Memory ─────────────────────────────────────────
+  APP_REDIS_CHAT_MEMORY_DATABASE: "1"
+  APP_REDIS_CHAT_MEMORY_TTL_HOURS: "24"
+
+  # ── Spring AI ─────────────────────────────────────────────────
+  SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL: "gpt-4o"
+  SPRING_AI_OPENAI_CHAT_OPTIONS_TEMPERATURE: "0.7"
+  SPRING_AI_OPENAI_CHAT_OPTIONS_MAX_TOKENS: "1000"
+  SPRING_AI_OPENAI_EMBEDDING_OPTIONS_MODEL: "text-embedding-3-small"
+
+  # ── pgvector ──────────────────────────────────────────────────
+  SPRING_AI_VECTORSTORE_PGVECTOR_INITIALIZE_SCHEMA: "false"
+  SPRING_AI_VECTORSTORE_PGVECTOR_INDEX_TYPE: "HNSW"
+  SPRING_AI_VECTORSTORE_PGVECTOR_DISTANCE_TYPE: "COSINE_DISTANCE"
+  SPRING_AI_VECTORSTORE_PGVECTOR_DIMENSIONS: "1536"
+
+  # ── Server ────────────────────────────────────────────────────
+  SERVER_PORT: "8080"
+  SERVER_SHUTDOWN: "graceful"
+
+  # ── JWT (non-sensitive parts) ─────────────────────────────────
+  APP_JWT_ACCESS_TOKEN_EXPIRY_MS: "900000"
+  APP_JWT_REFRESH_TOKEN_EXPIRY_MS: "604800000"

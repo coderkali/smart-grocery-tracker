@@ -1,0 +1,133 @@
+# ══════════════════════════════════════════════════════════════════
+# SmartFinvo — Application Deployment
+#
+# Runs the Spring Boot application.
+# 2 replicas for high availability.
+# Reads all config from ConfigMap and Secrets.
+# Waits for PostgreSQL to be ready before starting.
+# Graceful shutdown to avoid dropping requests.
+#
+# Replace IMAGE_URI with your actual ECR URI:
+#   274214919013.dkr.ecr.us-east-2.amazonaws.com/smartfinvo:latest
+# ══════════════════════════════════════════════════════════════════
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartfinvo
+  namespace: smartfinvo
+  labels:
+    app: smartfinvo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: smartfinvo
+  strategy:
+    type: RollingUpdate       # Deploy new pods before removing old ones
+    rollingUpdate:
+      maxSurge: 1             # Allow 1 extra pod during deployment
+      maxUnavailable: 0       # Never reduce below 2 running pods
+      # Zero downtime deployments
+  template:
+    metadata:
+      labels:
+        app: smartfinvo
+    spec:
+
+      # ── Init Container ─────────────────────────────────────────
+      # Waits for PostgreSQL to be ready before app starts.
+      # Runs pg_isready in a loop until postgres responds.
+      # Only then does the main app container start.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h postgres-service -p 5432 -U grocery_user; do
+                echo "PostgreSQL not ready yet — retrying in 2 seconds..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready — starting SmartFinvo app"
+
+      # ── Main Application Container ─────────────────────────────
+      containers:
+        - name: smartfinvo
+
+          # Replace this with your actual ECR URI
+          # Format: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG
+          image: 274214919013.dkr.ecr.us-east-2.amazonaws.com/smartfinvo:latest
+
+          # Always pull latest image from ECR
+          # Ensures new deployments always get fresh code
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+
+          # ── Configuration injection ───────────────────────────
+          # Injects ALL keys from ConfigMap as environment variables
+          # Injects ALL keys from Secret as environment variables
+          # Spring Boot reads these automatically
+          envFrom:
+            - configMapRef:
+                name: smartfinvo-config
+            - secretRef:
+                name: smartfinvo-secrets
+
+          # ── Resource limits ───────────────────────────────────
+          resources:
+            requests:
+              memory: "512Mi"   # Reserve 512MB per pod
+              cpu: "250m"       # Reserve 0.25 CPU core per pod
+            limits:
+              memory: "1Gi"     # Never exceed 1GB per pod
+              cpu: "500m"       # Never exceed 0.5 CPU core per pod
+
+          # ── Liveness probe ────────────────────────────────────
+          # Checks Spring Boot actuator liveness endpoint.
+          # If this fails 3 times → pod is restarted.
+          # /actuator/health/liveness = is the app alive?
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60   # Wait 60s for app to start
+            periodSeconds: 30         # Check every 30 seconds
+            failureThreshold: 3       # Restart after 3 failures
+            timeoutSeconds: 10        # Timeout each check after 10s
+
+          # ── Readiness probe ───────────────────────────────────
+          # Checks Spring Boot actuator readiness endpoint.
+          # If this fails → pod removed from load balancer.
+          # /actuator/health/readiness = ready for traffic?
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30   # Check sooner than liveness
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 10
+
+          # ── Graceful shutdown ─────────────────────────────────
+          # Sleep 10s before shutdown starts.
+          # Gives Load Balancer time to stop routing here.
+          # Prevents dropping in-flight requests.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+  ```
+
+---
+
+## One thing to check — Spring Boot Actuator
+
+The health probes use:
+  ```
+  /actuator/health/liveness
+  /actuator/health/readiness

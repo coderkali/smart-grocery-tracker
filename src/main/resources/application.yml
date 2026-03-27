@@ -2,22 +2,20 @@ spring:
   application:
     name: smartfinvo
 
-
-
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: redis_secret
-      database: 0
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:redis_secret}
+      database: ${SPRING_DATA_REDIS_DATABASE:0}
 
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: placeholder
-            client-secret: placeholder
+            client-id: ${OAUTH2_GOOGLE_CLIENT_ID:placeholder}
+            client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:placeholder}
             scope: openid, email, profile
         provider:
           google:
@@ -26,7 +24,7 @@ spring:
             user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
             user-name-attribute: sub
 
-  # ── Database ──────────────────────────────────────────────────────────────
+  # ── Database ────────────────────────────────────────────────────
   r2dbc:
     url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
     username: ${DB_USER:grocery_user}
@@ -37,7 +35,7 @@ spring:
       max-idle-time: 30m
       validation-query: SELECT 1
 
-  # ── Flyway ────────────────────────────────────────────────────────────────
+  # ── Flyway ──────────────────────────────────────────────────────
   flyway:
     enabled: true
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
@@ -55,6 +53,7 @@ spring:
     out-of-order: false
     validate-on-migrate: true
 
+  # ── Spring AI ───────────────────────────────────────────────────
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:placeholder}
@@ -65,12 +64,12 @@ spring:
           max-tokens: 1000
       embedding:
         options:
-          model: text-embedding-3-small  # cheapest, still excellent for RAG
+          model: text-embedding-3-small
 
     vectorstore:
       pgvector:
-        initialize-schema: false   # we handle schema via Flyway ourselves
-        index-type: HNSW           # fast approximate nearest neighbour search
+        initialize-schema: false
+        index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimensions: 1536
 
@@ -78,13 +77,16 @@ spring:
       memory:
         redis:
           key-prefix: "chat_memory:"
-          ttl: 3600   # conversation memory lives 1 hour in Redis
+          ttl: 3600
 
+  # ── JDBC DataSource (Flyway + pgvector) ─────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/smartfinvo
-    username: grocery_user
-    password: grocery_secret
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
+    username: ${DB_USER:grocery_user}
+    password: ${DB_PASSWORD:grocery_secret}
     driver-class-name: org.postgresql.Driver
+
+# ── SpringDoc / Swagger ─────────────────────────────────────────────
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -96,15 +98,14 @@ springdoc:
     display-request-duration: true
   show-actuator: false
 
+# ── App Config ──────────────────────────────────────────────────────
 app:
   jwt:
-    secret: local-dev-secret-key-must-be-at-least-32-characters-long
-    access-token-expiry-ms: 900000       # 15 minutes
-    refresh-token-expiry-ms: 604800000   # 7 days
+    secret: ${APP_JWT_SECRET:local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512-algo!}
+    access-token-expiry-ms: ${APP_JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
+    refresh-token-expiry-ms: ${APP_JWT_REFRESH_TOKEN_EXPIRY_MS:604800000}
 
   redis:
     chat-memory:
-      database: 1        # Chat memory — DB 1
-      ttl-hours: 24      # Conversations expire after 24h
-
-
+      database: ${APP_REDIS_CHAT_MEMORY_DATABASE:1}
+      ttl-hours: ${APP_REDIS_CHAT_MEMORY_TTL_HOURS:24}

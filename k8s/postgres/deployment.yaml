@@ -1,0 +1,117 @@
+# ══════════════════════════════════════════════════════════════════
+# SmartFinvo — PostgreSQL Deployment
+#
+# Runs pgvector/pgvector:pg15 image which has:
+#   - PostgreSQL 15
+#   - pgvector extension pre-installed
+#
+# Data is persisted via PVC so it survives pod restarts.
+# Only 1 replica — databases don't scale horizontally like apps.
+# ══════════════════════════════════════════════════════════════════
+
+# ── Persistent Volume Claim ────────────────────────────────────────
+# Requests 10GB of permanent storage from AWS EBS
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: smartfinvo
+  labels:
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce       # Only one pod can read/write at a time
+  resources:
+    requests:
+      storage: 10Gi       # 10GB — enough for development + testing
+
+---
+# ── PostgreSQL Deployment ──────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: smartfinvo
+  labels:
+    app: postgres
+spec:
+  replicas: 1             # Always 1 for databases
+  selector:
+    matchLabels:
+      app: postgres       # Manages pods with this label
+  strategy:
+    type: Recreate        # Stop old pod before starting new one
+    # Important for databases — avoid split brain
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg15   # Has pgvector built in
+          ports:
+            - containerPort: 5432
+          env:
+            # Database name
+            - name: POSTGRES_DB
+              value: "smartfinvo"
+
+            # Database user
+            - name: POSTGRES_USER
+              value: "grocery_user"
+
+            # Password from Secret — never hardcoded
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smartfinvo-secrets
+                  key: DB_PASSWORD
+
+          # Mount the PVC at postgres data directory
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+
+          # Resource limits — prevent postgres hogging all node memory
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # Liveness probe — is postgres alive?
+          # If this fails 3 times → pod is restarted
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - grocery_user
+                - -d
+                - smartfinvo
+            initialDelaySeconds: 30   # Wait 30s before first check
+            periodSeconds: 10         # Check every 10 seconds
+            failureThreshold: 3       # Restart after 3 failures
+
+          # Readiness probe — is postgres ready for connections?
+          # If this fails → pod removed from service endpoints
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - grocery_user
+                - -d
+                - smartfinvo
+            initialDelaySeconds: 5    # Check sooner than liveness
+            periodSeconds: 5
+            failureThreshold: 3
+
+      # Connect the PVC to the pod
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc   # Must match PVC name above

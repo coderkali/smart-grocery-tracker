@@ -59,3 +59,4 @@ Thumbs.db
 # apt_generated
 .apt_generated/
 .apt_generated_tests/
+k8s/secret.yaml

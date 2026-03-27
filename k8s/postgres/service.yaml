@@ -1,0 +1,27 @@
+# ══════════════════════════════════════════════════════════════════
+# SmartFinvo — PostgreSQL Service
+#
+# Gives postgres pod a stable internal hostname: postgres-service
+#
+# Other pods connect using:
+#   postgres-service:5432
+#
+# Type ClusterIP = internal only, not accessible from internet.
+# This is correct — database should NEVER be public.
+# ══════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service    # This is the hostname other pods use
+  namespace: smartfinvo
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres           # Routes traffic to pods labelled app=postgres
+  ports:
+    - name: postgres
+      port: 5432            # Port the service listens on
+      targetPort: 5432      # Port the pod listens on
+  type: ClusterIP           # Internal only — no public access
