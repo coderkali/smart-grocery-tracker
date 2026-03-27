@@ -33,6 +33,8 @@ public class SwaggerConfig {
                     **Modules:**
                     - **Auth** — session management, OAuth2 login, token rotation
                     - **AI** — natural language grocery management, smart suggestions, recipe chat, budget analysis
+                    - **Expenses** — create, read, update, delete expense records; filter by date range or category
+                    - **Categories** — manage expense categories used to classify spending
                     """)
                 .version("v1.0.0")
                 .contact(new Contact()
