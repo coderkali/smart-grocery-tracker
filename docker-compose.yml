@@ -20,7 +20,7 @@ services:
   # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: sgt-postgres
+    container_name: smartfinvo-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB:       smart_grocery
@@ -42,7 +42,7 @@ services:
   # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: sgt-redis
+    container_name: smartfinvo-redis
     restart: unless-stopped
     command: >
       redis-server
@@ -65,7 +65,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    container_name: sgt-app
+    container_name: smartfinvo-app
     restart: unless-stopped
     depends_on:
       postgres:
@@ -108,7 +108,7 @@ services:
   # ── MailHog — catches all outbound emails locally ──────────────────────────
   mailhog:
     image: mailhog/mailhog:latest
-    container_name: sgt-mailhog
+    container_name: smartfinvo-mailhog
     restart: unless-stopped
     ports:
       - "1025:1025"   # SMTP
@@ -117,7 +117,7 @@ services:
   # ── PgAdmin — optional Postgres web UI ────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: sgt-pgadmin
+    container_name: smartfinvo-pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL:    admin@smartgrocery.local
@@ -132,8 +132,8 @@ services:
 # ── Volumes ────────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:
-    name: sgt-postgres-data
+    name: smartfinvo-postgres-data
   redis_data:
-    name: sgt-redis-data
+    name: smartfinvo-redis-data
   app_logs:
-    name: sgt-app-logs
+    name: smartfinvo-app-logs

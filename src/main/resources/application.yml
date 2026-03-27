@@ -1,6 +1,8 @@
 spring:
   application:
-    name: smart-grocery-tracker
+    name: smartfinvo
+
+
 
   data:
     redis:
@@ -25,7 +27,7 @@ spring:
 
   # ── Database ──────────────────────────────────────────────────────────────
   r2dbc:
-    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
+    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
     username: ${DB_USER:grocery_user}
     password: ${DB_PASSWORD:grocery_secret}
     pool:
@@ -37,7 +39,7 @@ spring:
   # ── Flyway ────────────────────────────────────────────────────────────────
   flyway:
     enabled: true
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smart_grocery}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartfinvo}
     user: ${DB_USER:grocery_user}
     password: ${DB_PASSWORD:grocery_secret}
     locations:
@@ -78,7 +80,7 @@ spring:
           ttl: 3600   # conversation memory lives 1 hour in Redis
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/smart_grocery
+    url: jdbc:postgresql://localhost:5432/smartfinvo
     username: grocery_user
     password: grocery_secret
     driver-class-name: org.postgresql.Driver

@@ -11,11 +11,11 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.smartgrocery</groupId>
-  <artifactId>smart-grocery-tracker</artifactId>
+  <groupId>com.smartfinvo</groupId>
+  <artifactId>smartfinvo</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>Smart Grocery Tracker</name>
-  <description>AI-powered grocery and expense tracker — Modular Monolith</description>
+  <name>Smart Finance Tracker</name>
+  <description>AI-powered Smart Finance and expense tracker — Modular Monolith</description>
 
   <properties>
     <java.version>21</java.version>
@@ -219,6 +219,12 @@
     <!-- ── Conversation Memory ────────────────────── -->
     <!-- For Redis chat memory: Use spring-boot-starter-data-redis (already included above) -->
     <!-- and implement custom ChatMemory interface for conversation storage -->
+
+    <!-- JDBC support for pgvector (Spring AI not reactive yet) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
 
 
   </dependencies>

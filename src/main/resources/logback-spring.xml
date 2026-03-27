@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- ── Console appender ─────────────────────────────────────────────── -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ── Console appender TEXT (Local/Dev) ────────────────────────────── -->
+    <appender name="CONSOLE_TEXT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ── Console appender JSON (Prod) ──────────────────────────────────── -->
     <!-- In production this would ship to Datadog / ELK / CloudWatch        -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <!-- LogstashEncoder outputs structured JSON                     -->
             <!-- Every log line is a JSON object — easy to search and filter -->
@@ -13,31 +23,35 @@
         </encoder>
     </appender>
 
-    <!-- ── Auth module — DEBUG in dev, INFO in prod ─────────────────────── -->
+    <!-- ── Local/Dev profile ─────────────────────────────────────────────── -->
     <springProfile name="default,local,dev">
-    <logger name="com.smartgrocery.modules.auth" level="DEBUG" additivity="false">
-            <appender-ref ref="CONSOLE"/>
+        <logger name="com.smartfinvo.modules.auth" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE_TEXT"/>
         </logger>
         <logger name="org.springframework.security" level="DEBUG" additivity="false">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_TEXT"/>
         </logger>
         <logger name="io.r2dbc" level="DEBUG" additivity="false">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_TEXT"/>
         </logger>
+        <!-- ── Root logger ────────────────────────────────────────────────── -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_TEXT"/>
+        </root>
     </springProfile>
 
+    <!-- ── Prod profile ──────────────────────────────────────────────────── -->
     <springProfile name="prod">
-        <logger name="com.smartgrocery.modules.auth" level="INFO" additivity="false">
-            <appender-ref ref="CONSOLE"/>
+        <logger name="com.smartfinvo.modules.auth" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE_JSON"/>
         </logger>
         <logger name="org.springframework.security" level="WARN" additivity="false">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_JSON"/>
         </logger>
+        <!-- ── Root logger ────────────────────────────────────────────────── -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
     </springProfile>
-
-    <!-- ── Root logger ───────────────────────────────────────────────────── -->
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-    </root>
 
 </configuration>
