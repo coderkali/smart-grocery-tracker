@@ -1,0 +1,65 @@
+# ══════════════════════════════════════════════════════════════════
+# SmartFinvo — Horizontal Pod Autoscaler
+#
+# Automatically scales pods based on CPU and memory usage.
+#
+# Scale UP:   when CPU > 70% or Memory > 80%
+# Scale DOWN: when metrics drop below thresholds
+#             (after 5 minute cooldown)
+#
+# Min: 2 pods  → always high availability
+# Max: 5 pods  → cost control ceiling
+# ══════════════════════════════════════════════════════════════════
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: smartfinvo-hpa
+  namespace: smartfinvo
+  labels:
+    app: smartfinvo
+spec:
+  # Which deployment to scale
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: smartfinvo          # Must match deployment name
+
+  # Pod count boundaries
+  minReplicas: 2              # Never go below 2 — high availability
+  maxReplicas: 5              # Never exceed 5 — cost control
+
+  metrics:
+    # ── CPU metric ─────────────────────────────────────────────
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70    # Scale up when avg CPU > 70%
+
+    # ── Memory metric ───────────────────────────────────────────
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80    # Scale up when avg memory > 80%
+
+  # ── Scaling behaviour ─────────────────────────────────────────
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60    # Wait 60s before scaling up
+      # Avoids reacting to brief spikes
+      policies:
+        - type: Pods
+          value: 1                      # Add 1 pod at a time
+          periodSeconds: 60             # Maximum once per minute
+
+    scaleDown:
+      stabilizationWindowSeconds: 300   # Wait 5 minutes before scaling down
+      # Avoids removing pods too quickly
+      policies:
+        - type: Pods
+          value: 1                      # Remove 1 pod at a time
+          periodSeconds: 120            # Maximum once per 2 minutes

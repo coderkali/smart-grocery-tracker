@@ -109,3 +109,14 @@ app:
     chat-memory:
       database: ${APP_REDIS_CHAT_MEMORY_DATABASE:1}
       ttl-hours: ${APP_REDIS_CHAT_MEMORY_TTL_HOURS:24}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
