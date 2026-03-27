@@ -1,4 +1,4 @@
-# 🛒 Smart Grocery Tracker
+# Smart Grocery Tracker
 
 > AI-powered grocery & expense tracking platform — Backend API
 
@@ -9,38 +9,41 @@
 | Layer | Technology |
 |---|---|
 | Language | Java 21 |
-| Framework | Spring Boot 3.2 |
+| Framework | Spring Boot 3.2 (WebFlux — reactive) |
 | Architecture | Modular Monolith (microservice-ready) |
 | Database | PostgreSQL 15 |
 | Migrations | Flyway 10 |
 | Cache / Sessions | Redis 7 |
-| Auth | Spring Security + OAuth2 + JWT (HS512) |
-| API Docs | SpringDoc / OpenAPI 3 |
+| Auth | Spring Security + Google OAuth2 + JWT (HS512) |
+| AI | Spring AI + OpenAI GPT-4o + pgvector (RAG) |
+| API Docs | SpringDoc / OpenAPI 3 (Swagger UI) |
 | Build | Maven + multi-stage Docker |
 | CI | GitHub Actions |
+| Container Orchestration | Kubernetes (k8s manifests included) |
+| Infrastructure as Code | Terraform (AWS EKS) |
 
 ---
 
-## Local Development — 5 Commands
+## Local Development
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/smart-grocery-tracker && cd smart-grocery-tracker
+git clone https://github.com/coderkali/smart-grocery-tracker && cd smart-grocery-tracker
 
-# 2. Copy env file and fill in OAuth2 keys
+# 2. Copy env file and fill in OAuth2 / API keys
 cp .env.example .env
 
 # 3. Start infrastructure (postgres + redis)
 make up-infra
 
-# 4. Run the app (local profile, Flyway runs automatically)
+# 4. Run the app (local profile, Flyway migrations run automatically)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 
 # 5. Open Swagger UI
 open http://localhost:8080/swagger-ui.html
 ```
 
-**Or start everything in Docker:**
+**Or run everything in Docker:**
 ```bash
 make up
 ```
@@ -50,47 +53,73 @@ make up
 ## Module Structure
 
 ```
-src/main/java/com/smartgrocery/
-├── SmartGroceryTrackerApplication.java
-│
-├── shared/                        # Cross-cutting concerns
-│   ├── config/BaseEntity.java     # All entities extend this
-│   ├── response/ApiResponse.java  # Standard response envelope
-│   ├── exception/                 # Global exception handling
-│   ├── security/                  # JWT + Spring Security config
-│   └── audit/RequestContext.java  # Thread-local user context
+src/main/java/com/smartfinvo/
+├── SmartFinvoApplication.java
+├── SpringConfig.java
+├── config/
+│   └── SwaggerConfig.java
 │
 └── modules/
-    ├── auth/          # OAuth2, JWT, sessions, token rotation
-    ├── user/          # User profiles, onboarding
-    ├── expense/       # Transactions, categories, budgets
-    ├── ai/            # OpenAI/Gemini chat integration
-    ├── notification/  # Email alerts via SendGrid
-    └── cardsync/      # Plaid credit card sync
+    ├── auth/          # Google OAuth2, JWT, refresh token rotation, session management
+    ├── expense/       # Expense records, categories, filtering
+    └── ai/            # Natural language grocery management, smart suggestions,
+                       # recipe chat (streaming SSE), budget analysis (RAG + pgvector)
 ```
 
-**Module boundary rule:** Modules communicate via `ApplicationEvent` only.  
-No module imports another module's internal classes.  
-This discipline means any module can be extracted to its own microservice with zero code changes.
+**Module boundary rule:** Modules communicate only through their `api/` port interfaces.
+No module imports another module's internal classes — any module can be extracted to its own microservice with zero code changes.
 
 ---
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/actuator/health` | Health check |
-| GET | `/swagger-ui.html` | API documentation |
-| GET | `/api/v1/auth/me` | Current user |
-| POST | `/api/v1/auth/refresh` | Rotate refresh token |
-| POST | `/api/v1/auth/logout` | Revoke all sessions |
-| GET | `/api/v1/expenses` | List expenses (paginated) |
-| POST | `/api/v1/expenses` | Create expense |
-| GET | `/api/v1/expenses/{id}` | Get expense |
-| PUT | `/api/v1/expenses/{id}` | Update expense |
-| DELETE | `/api/v1/expenses/{id}` | Soft-delete expense |
-| GET | `/api/v1/expenses/stats/monthly` | Monthly stats + category breakdown |
-| GET | `/api/v1/expenses/stats/merchants` | Top merchants by spend |
+### Authentication
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/oauth2/authorization/google` | — | Initiate Google OAuth2 login |
+| POST | `/api/v1/auth/refresh` | Cookie | Rotate access + refresh tokens |
+| POST | `/api/v1/auth/logout` | JWT | Logout current device |
+| POST | `/api/v1/auth/logout/all` | JWT | Logout all devices |
+| GET | `/api/v1/auth/me` | JWT | Get current user profile |
+| GET | `/api/v1/auth/sessions` | JWT | List all active sessions |
+| DELETE | `/api/v1/auth/sessions/{id}` | JWT | Revoke a specific session |
+
+### Expenses
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/expenses` | JWT | Create a new expense |
+| GET | `/api/v1/expenses` | JWT | List all expenses |
+| GET | `/api/v1/expenses/{id}` | JWT | Get expense by ID |
+| GET | `/api/v1/expenses?start_date=&end_date=` | JWT | Filter by date range |
+| GET | `/api/v1/expenses?category_id=` | JWT | Filter by category |
+| PUT | `/api/v1/expenses/{id}` | JWT | Update an expense |
+| DELETE | `/api/v1/expenses/{id}` | JWT | Soft-delete an expense |
+
+### Categories
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/categories` | JWT | Create a category |
+| GET | `/api/v1/categories` | JWT | List all active categories |
+| GET | `/api/v1/categories/{id}` | JWT | Get category by ID |
+| PUT | `/api/v1/categories/{id}` | JWT | Update a category |
+| DELETE | `/api/v1/categories/{id}` | JWT | Deactivate a category |
+
+### AI Features
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/v1/ai/search` | JWT | Natural language grocery management |
+| POST | `/api/v1/ai/suggest` | JWT | Smart item suggestions (RAG) |
+| POST | `/api/v1/ai/recipe` | JWT | Conversational recipe assistant (streaming SSE) |
+| POST | `/api/v1/ai/budget` | JWT | Spending & budget analysis |
+
+---
+
+## Authentication Flow
+
+1. Redirect user to `GET /oauth2/authorization/google`
+2. On success, receive a **JWT access token** in the response body and a **refresh token** as an `HttpOnly` cookie
+3. Pass the access token as `Authorization: Bearer <token>` on every protected request
+4. When the access token expires (401), call `POST /api/v1/auth/refresh` — the cookie is sent automatically and new tokens are returned
 
 ---
 
@@ -98,13 +127,10 @@ This discipline means any module can be extracted to its own microservice with z
 
 ```
 src/main/resources/db/migration/
-├── system/       V1_0_0__create_system_tables.sql   (plan, feature_flag)
-├── auth/         V1_0_0__create_auth_tables.sql     (user_account, user_identity, refresh_token)
-├── expense/      V1_0_0__create_expense_tables.sql  (expense, budget, audit_log, user_activity)
-├── user/
-├── notification/
-├── cardsync/
-└── ai/
+├── auth/     V1__create_auth_tables.sql      (user_account, user_identity, refresh_token)
+├── user/     V2__create_user_tables.sql
+├── ai/       V3__ai_module_schema.sql         (ai_conversations, pgvector embeddings)
+└── expense/  V4__create_expense_tables.sql    (expense, expense_category)
 ```
 
 Migrations run automatically on startup. Never edit a committed migration — always add a new version.
@@ -113,27 +139,49 @@ Migrations run automatically on startup. Never edit a committed migration — al
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/smart_grocery` | DB connection |
-| `SPRING_DATASOURCE_USERNAME` | `grocery_user` | DB user |
-| `SPRING_DATASOURCE_PASSWORD` | `grocery_secret` | DB password |
-| `SPRING_REDIS_HOST` | `localhost` | Redis host |
-| `JWT_SECRET` | — | Min 64 chars, **required** |
-| `OAUTH2_GOOGLE_CLIENT_ID` | — | Google OAuth2 |
-| `OAUTH2_GOOGLE_CLIENT_SECRET` | — | Google OAuth2 |
-| `OAUTH2_GITHUB_CLIENT_ID` | — | GitHub OAuth2 |
-| `OAUTH2_GITHUB_CLIENT_SECRET` | — | GitHub OAuth2 |
-| `OPENAI_API_KEY` | — | AI chat feature |
-| `PLAID_CLIENT_ID` | — | Card sync feature |
+| Variable | Description |
+|---|---|
+| `SPRING_R2DBC_URL` | PostgreSQL R2DBC connection URL |
+| `SPRING_R2DBC_USERNAME` | DB username |
+| `SPRING_R2DBC_PASSWORD` | DB password |
+| `SPRING_DATA_REDIS_HOST` | Redis host |
+| `JWT_SECRET` | Min 64 chars, **required** |
+| `OAUTH2_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
+| `OAUTH2_GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
+| `OPENAI_API_KEY` | OpenAI API key (AI features) |
+
+Copy `.env.example` for a full list with descriptions.
 
 ---
 
-## Architecture Decision Records
+## Deployment
 
-See `/docs/adr/` for all architectural decisions.
+### Kubernetes
+Manifests are in `k8s/`:
+```
+k8s/
+├── namespace.yaml
+├── configmap.yaml
+├── app/         # Deployment, Service, HPA
+├── postgres/    # Deployment, Service
+└── redis/       # Deployment, Service
+```
 
-- ADR-001: Modular Monolith
-- ADR-002: Schema-per-Tenant
-- ADR-003: JWT + Refresh Token Rotation
-- ADR-004: Flyway Migrations
+### Terraform (AWS EKS)
+Infrastructure scripts are in `terraform/`:
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+---
+
+## Swagger UI
+
+Once the app is running, full interactive API docs are available at:
+
+```
+http://localhost:8080/swagger-ui.html
+```
