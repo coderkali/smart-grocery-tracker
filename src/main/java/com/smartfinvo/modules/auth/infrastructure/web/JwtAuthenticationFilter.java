@@ -38,7 +38,12 @@ public class JwtAuthenticationFilter implements WebFilter {
             "/login",
             "/oauth2",
             "/actuator/health",
-            "/api/v1/ai/**"
+            "/api/v1/ai/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs",
+            "/webjars/**"
     );
 
     @Override

@@ -41,7 +41,13 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/api/v1/auth/refresh",
                     "/actuator/health",
-                        "/api/v1/ai/**"
+                    "/api/v1/ai/**",
+                    // Swagger UI
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs",
+                    "/v3/api-docs/**",
+                    "/webjars/**"
                 ).permitAll()
 
                 // Everything else requires a valid JWT

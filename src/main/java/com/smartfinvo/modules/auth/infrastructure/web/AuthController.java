@@ -1,10 +1,20 @@
 package com.smartfinvo.modules.auth.infrastructure.web;
 
 import com.smartfinvo.modules.auth.api.AuthModulePort;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -25,6 +35,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Session management — token rotation, logout, user profile, and active sessions. Login itself is handled by OAuth2 redirect: `GET /oauth2/authorization/google`.")
 public class AuthController {
 
   private final AuthModulePort authService;
@@ -33,6 +44,28 @@ public class AuthController {
   // Client calls this when their access token expires (401)
   // Refresh token comes automatically from the HttpOnly cookie
   // Returns new access token in body + new refresh token in cookie
+  @Operation(
+      summary = "Rotate tokens",
+      description = """
+          Exchange a valid refresh token for a new access + refresh token pair.
+          The refresh token is read automatically from the `refresh_token` HttpOnly cookie — no request body needed.
+          A new refresh token is written back to the cookie on success.
+          """)
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Tokens rotated successfully",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              examples = @ExampleObject(value = """
+                  {
+                    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                    "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "email": "user@example.com",
+                    "onboardingStep": "COMPLETED",
+                    "expiresIn": 900
+                  }"""))),
+      @ApiResponse(responseCode = "401", description = "Missing or invalid refresh token",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              examples = @ExampleObject(value = "{\"error\": \"No refresh token\"}")))
+  })
   @PostMapping("/refresh")
   public Mono<ResponseEntity<Map<String, Object>>> refresh(ServerWebExchange exchange) {
 
@@ -79,9 +112,20 @@ public class AuthController {
   // ── POST /api/v1/auth/logout ──────────────────────────────────────────
   // Revokes current device session only
   // userId extracted from JWT by JwtAuthenticationFilter (Step 11)
+  @Operation(
+      summary = "Logout current device",
+      description = "Revokes the refresh token for the current device session only. Clears the `refresh_token` cookie. Idempotent — returns 200 even if already logged out.",
+      security = @SecurityRequirement(name = "BearerAuth"))
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Logged out",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              examples = @ExampleObject(value = "{\"message\": \"Logged out successfully\"}"))),
+      @ApiResponse(responseCode = "500", description = "Internal error during logout")
+  })
   @PostMapping("/logout")
   public Mono<ResponseEntity<Map<String, String>>> logout(
-      ServerWebExchange exchange, @RequestAttribute("userId") UUID userId) {
+      ServerWebExchange exchange,
+      @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
     HttpCookie cookie = exchange.getRequest().getCookies().getFirst("refresh_token");
 
@@ -113,9 +157,21 @@ public class AuthController {
 
   // ── POST /api/v1/auth/logout/all ─────────────────────────────────────
   // Revokes ALL sessions for this user across all devices
+  @Operation(
+      summary = "Logout all devices",
+      description = "Revokes every active refresh token for this user across all devices and browsers. Use this after a suspected account compromise.",
+      security = @SecurityRequirement(name = "BearerAuth"))
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "All sessions revoked",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              examples = @ExampleObject(value = """
+                  {"message": "All sessions revoked", "sessionsRevoked": 3}"""))),
+      @ApiResponse(responseCode = "500", description = "Internal error")
+  })
   @PostMapping("/logout/all")
   public Mono<ResponseEntity<Map<String, Object>>> logoutAll(
-      ServerWebExchange exchange, @RequestAttribute("userId") UUID userId) {
+      ServerWebExchange exchange,
+      @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
     AuthModulePort.LogoutAllCommand command = new AuthModulePort.LogoutAllCommand(userId);
 
@@ -140,9 +196,19 @@ public class AuthController {
   // ── GET /api/v1/auth/me ───────────────────────────────────────────────
   // Returns current user profile
   // userId injected by JwtAuthenticationFilter from the JWT
+  @Operation(
+      summary = "Get current user profile",
+      description = "Returns the authenticated user's profile extracted from the JWT.",
+      security = @SecurityRequirement(name = "BearerAuth"))
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "User profile",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = AuthModulePort.AuthUserDto.class))),
+      @ApiResponse(responseCode = "404", description = "User not found")
+  })
   @GetMapping("/me")
   public Mono<ResponseEntity<AuthModulePort.AuthUserDto>> me(
-      @RequestAttribute("userId") UUID userId) {
+      @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
     return authService
         .getCurrentUser(userId)
@@ -156,17 +222,38 @@ public class AuthController {
 
   // ── GET /api/v1/auth/sessions ─────────────────────────────────────────
   // Returns all active sessions for the current user
+  @Operation(
+      summary = "List active sessions",
+      description = "Returns all active login sessions for the current user across all devices.",
+      security = @SecurityRequirement(name = "BearerAuth"))
+  @ApiResponse(responseCode = "200", description = "List of active sessions",
+      content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+          schema = @Schema(implementation = AuthModulePort.SessionDto.class)))
   @GetMapping("/sessions")
-  public Flux<AuthModulePort.SessionDto> sessions(@RequestAttribute("userId") UUID userId) {
+  public Flux<AuthModulePort.SessionDto> sessions(
+      @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
     return authService.getActiveSessions(userId);
   }
 
   // ── DELETE /api/v1/auth/sessions/{sessionId} ──────────────────────────
   // Revokes a specific session by ID
   // User can only revoke their own sessions (AuthService validates this)
+  @Operation(
+      summary = "Revoke a specific session",
+      description = "Revokes one session by its ID. Users can only revoke their own sessions.",
+      security = @SecurityRequirement(name = "BearerAuth"))
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Session revoked",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              examples = @ExampleObject(value = "{\"message\": \"Session revoked\"}"))),
+      @ApiResponse(responseCode = "403", description = "Session belongs to another user"),
+      @ApiResponse(responseCode = "404", description = "Session not found")
+  })
   @DeleteMapping("/sessions/{sessionId}")
   public Mono<ResponseEntity<Map<String, String>>> revokeSession(
-      @PathVariable UUID sessionId, @RequestAttribute("userId") UUID userId) {
+      @Parameter(description = "UUID of the session to revoke", required = true)
+      @PathVariable UUID sessionId,
+      @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
     return authService
         .revokeSession(userId, sessionId)
