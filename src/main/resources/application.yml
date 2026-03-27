@@ -9,6 +9,7 @@ spring:
       host: localhost
       port: 6379
       password: redis_secret
+      database: 0
 
   security:
     oauth2:
@@ -89,5 +90,10 @@ app:
     secret: local-dev-secret-key-must-be-at-least-32-characters-long
     access-token-expiry-ms: 900000       # 15 minutes
     refresh-token-expiry-ms: 604800000   # 7 days
+
+  redis:
+    chat-memory:
+      database: 1        # Chat memory — DB 1
+      ttl-hours: 24      # Conversations expire after 24h
 
 

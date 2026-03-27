@@ -1,5 +1,6 @@
 package com.smartfinvo.modules.ai.infrastructure.config;
 
+import com.smartfinvo.modules.ai.infrastructure.memory.RedisChatMemory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -51,9 +52,8 @@ public class AiConfig {
     // - AiService injects this into ChatClient for recipe chat
     //
     @Bean
-    public ChatMemory chatMemory() {
-        log.info("Initialising In-Memory ChatMemory (fallback since Redis store failed)");
-        return new InMemoryChatMemory();
+    public ChatMemory chatMemory(RedisChatMemory redisChatMemory) {
+        return redisChatMemory;
     }
 
     // ── Bean 3 — ChatClient (OpenAI) ──────────────────────────────────────
