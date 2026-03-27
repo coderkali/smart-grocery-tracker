@@ -97,13 +97,19 @@ public class AiConfig {
         //
         @Bean
         public ChatClient chatClient(ChatModel chatModel, ChatMemory chatMemory) {
-                log.info("Initialising ChatClient with memory advisor");
+                log.info("Initialising ChatClient with memory advisor and functions");
 
                 return ChatClient.builder(chatModel)
                                 .defaultSystem("You are a helpful AI assistant for the Smart Grocery Tracker app. " +
                                                 "Help users with grocery shopping, expense tracking, and smart recommendations.")
                                 .defaultAdvisors(
                                                 new MessageChatMemoryAdvisor(chatMemory))
+                                .defaultFunctions(
+                                                "addItemToGroceryList",
+                                                "removeItemFromGroceryList",
+                                                "getCurrentListItems",
+                                                "getBudgetInfo",
+                                                "searchPurchaseHistory")
                                 .build();
         }
 }
