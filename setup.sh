@@ -35,7 +35,6 @@ terraform apply \
   -target=aws_iam_role_policy.budgets_iam_attach \
   -target=aws_iam_policy.cost_guardrails \
   -target=aws_budgets_budget.monthly \
-  -target=aws_budgets_budget_action.stop_ec2 \
   -target=aws_budgets_budget_action.apply_guardrails \
   -target=aws_wafv2_web_acl.smartfinvo \
   -auto-approve

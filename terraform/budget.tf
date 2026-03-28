@@ -139,45 +139,20 @@ resource "aws_budgets_budget" "monthly" {
 }
 
 
-# ── Budget Action: Auto-Stop EC2 at 120% ──────────────────────────
-# When spend exceeds 120% of budget, AWS Budgets automatically
-# stops all running EC2 instances in the account.
+# ── NOTE: Auto-Stop EC2 ───────────────────────────────────────────
+# AWS Budget SSM stop action requires specific instance IDs —
+# wildcards are not supported. Since instance IDs change every time
+# the cluster is recreated, this approach is not practical here.
 #
-# At $25 budget → kill switch fires at $30 spent
+# Protection is handled by two other mechanisms instead:
+#   1. IAM deny policy applied at 100% — blocks new resource creation
+#   2. EventBridge + email alerts — notifies you of any EC2 activity
 #
-# NOTE: This STOPS instances (not terminates) — data is preserved.
-#       Your EKS nodes will stop. Pods will go Pending.
-#       Restart manually from console once you've reviewed costs.
-
-resource "aws_budgets_budget_action" "stop_ec2" {
-  budget_name        = aws_budgets_budget.monthly.name
-  action_type        = "RUN_SSM_DOCUMENTS"
-  approval_model     = "AUTOMATIC"   # No manual approval needed — fires immediately
-  notification_type  = "ACTUAL"
-
-  action_threshold {
-    action_threshold_type  = "PERCENTAGE"
-    action_threshold_value = 120
-  }
-
-  # The IAM role that executes the stop action
-  execution_role_arn = aws_iam_role.budgets_action_role.arn
-
-  # Target: stop all EC2 instances in us-east-2
-  definition {
-    ssm_action_definition {
-      action_sub_type = "STOP_EC2_INSTANCES"
-      region          = var.aws_region
-      instance_ids    = ["*"]   # All instances in the region
-    }
-  }
-
-  # Notify via SNS when the action fires
-  subscriber {
-    address           = aws_sns_topic.billing_alerts.arn
-    subscription_type = "SNS"
-  }
-}
+# If you need to stop instances manually:
+#   aws ec2 stop-instances --instance-ids $(aws ec2 describe-instances \
+#     --filters "Name=instance-state-name,Values=running" \
+#     --query "Reservations[].Instances[].InstanceId" \
+#     --output text) --region us-east-2
 
 
 # ── Outputs ───────────────────────────────────────────────────────
