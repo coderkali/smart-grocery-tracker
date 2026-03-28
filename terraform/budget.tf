@@ -21,10 +21,11 @@
 variable "monthly_budget_limit" {
   description = "Maximum monthly AWS spend in USD before auto-stop triggers"
   type        = number
-  default     = 25
+  default     = 100
+  # EKS control plane = ~$73/month
   # t3.small × 1 node = ~$17/month
-  # $25 gives ~$8 buffer for data transfer, EKS control plane ($0.10/hr = ~$73/month)
-  # NOTE: EKS control plane alone costs ~$73/month — set budget accordingly
+  # Data transfer / misc = ~$2–5/month
+  # Total expected = ~$92–95/month — $100 gives a safe ~$5–8 buffer
 }
 
 variable "alert_email" {
