@@ -32,30 +32,31 @@ variable "kubernetes_version" {
 variable "node_instance_type" {
   description = "EC2 instance type for worker nodes"
   type        = string
-  default     = "t3.medium"
-  # t3.small = 2 vCPU, 2GB RAM = $0.023/hour
-  # t3.medium = 2 vCPU, 4GB RAM = $0.047/hour (if app needs more memory)
+  default     = "t3.small"
+  # t3.small  = 2 vCPU, 2GB RAM = $0.023/hour (~$17/month) — dev/test
+  # t3.medium = 2 vCPU, 4GB RAM = $0.047/hour (~$34/month) — production
 }
 
 variable "node_desired_count" {
   description = "Number of nodes to run normally"
   type        = number
-  default     = 2
-  # 2 nodes = high availability across 2 AZs
+  default     = 1
+  # 1 node = sufficient for dev/test, saves cost
+  # Increase to 2 for production (HA across 2 AZs)
 }
 
 variable "node_min_count" {
   description = "Minimum nodes (HPA can scale down to this)"
   type        = number
   default     = 1
-  # 1 minimum = saves money during quiet periods
+  # Keep at 1 — cluster must always have at least one node
 }
 
 variable "node_max_count" {
   description = "Maximum nodes (HPA can scale up to this)"
   type        = number
-  default     = 3
-  # 3 maximum = cost control ceiling
+  default     = 2
+  # Reduced from 3 to 2 — cost control ceiling for dev
 }
 
 # ── Existing Resources ────────────────────────────────────────────
