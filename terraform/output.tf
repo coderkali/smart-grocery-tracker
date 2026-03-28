@@ -41,3 +41,8 @@ output "deploy_command" {
   description = "Run this command to deploy k8s manifests"
   value       = "kubectl apply -R -f ../k8s/"
 }
+
+output "billing_alert_sns_arn" {
+  description = "SNS topic ARN used by start.sh and stop.sh for email notifications"
+  value       = aws_sns_topic.billing_alerts.arn
+}
