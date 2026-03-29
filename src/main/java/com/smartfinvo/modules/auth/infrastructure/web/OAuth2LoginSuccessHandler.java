@@ -12,8 +12,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.time.Duration;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import java.util.Map;
 
 // Spring Security calls this automatically after it has:
 //   1. Received the ?code= from Google
@@ -91,20 +96,26 @@ public class OAuth2LoginSuccessHandler implements ServerAuthenticationSuccessHan
 
                     webExchange.getResponse().addCookie(refreshCookie);
 
-                    // Redirect to frontend with access token as query param
-                    // Frontend reads it once, stores in memory, discards from URL
-                    String redirectUrl = FRONTEND_URL
-                            + "?token=" + tokens.accessToken()
-                            + "&step="  + tokens.onboardingStep();
+                    // Return JSON response with access token
+                    // User can copy the accessToken and use it in Postman
+                    webExchange.getResponse().setStatusCode(HttpStatus.OK);
+                    webExchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-                    webExchange.getResponse()
-                            .getHeaders()
-                            .setLocation(URI.create(redirectUrl));
+                    Map<String, Object> body = Map.of(
+                            "accessToken", tokens.accessToken(),
+                            "userId", tokens.userId().toString(),
+                            "email", tokens.email(),
+                            "onboardingStep", tokens.onboardingStep(),
+                            "expiresIn", tokens.expiresIn()
+                    );
 
-                    webExchange.getResponse()
-                            .setStatusCode(org.springframework.http.HttpStatus.FOUND);
-
-                    return webExchange.getResponse().setComplete();
+                    try {
+                        byte[] bytes = new ObjectMapper().writeValueAsBytes(body);
+                        DataBuffer buffer = webExchange.getResponse().bufferFactory().wrap(bytes);
+                        return webExchange.getResponse().writeWith(Mono.just(buffer));
+                    } catch (Exception e) {
+                        return Mono.error(e);
+                    }
                 })
                 .doOnError(error ->
                     log.error("OAuth2 login failed provider={} error={}",

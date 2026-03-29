@@ -8,6 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -91,9 +95,16 @@ public class JwtAuthenticationFilter implements WebFilter {
             // Also store as attribute for @RequestAttribute
             mutated.getAttributes().put("userId", UUID.fromString(userId));
 
+            // Set Spring Security authentication context
+            // Without this, Spring Security's .anyExchange().authenticated() check fails
+            // and redirects to OAuth2 login page even with a valid JWT
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                    userId, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+
             log.debug("JWT valid userId={} path={}", userId, path);
 
-            return chain.filter(mutated);
+            return chain.filter(mutated)
+                    .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
 
         } catch (ExpiredJwtException e) {
             // Token is valid but expired — client should call /refresh
