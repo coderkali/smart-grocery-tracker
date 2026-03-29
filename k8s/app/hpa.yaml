@@ -26,8 +26,8 @@ spec:
     name: smartfinvo          # Must match deployment name
 
   # Pod count boundaries
-  minReplicas: 2              # Never go below 2 — high availability
-  maxReplicas: 5              # Never exceed 5 — cost control
+  minReplicas: 1              # Single node dev cluster — 1 is enough
+  maxReplicas: 2              # Cap at 2 for t3.small node
 
   metrics:
     # ── CPU metric ─────────────────────────────────────────────

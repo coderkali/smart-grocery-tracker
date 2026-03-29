@@ -45,7 +45,7 @@ public class AuthService implements AuthModulePort {
   private long refreshTokenExpiryMs;
 
   @Override
-  @Transactional
+  @Transactional("connectionFactoryTransactionManager")
   public Mono<TokenPairDto> processOAuth2Login(OAuth2LoginCommand cmd) {
     log.info(
         "Processing OAuth2 login provider={} email={}", cmd.provider(), maskEmail(cmd.email()));
@@ -94,7 +94,7 @@ public class AuthService implements AuthModulePort {
   // Client sends refresh token → we validate → issue new pair
   // Redis checked first → PostgreSQL as fallback
   @Override
-  @Transactional
+  @Transactional("connectionFactoryTransactionManager")
   public Mono<TokenPairDto> refreshTokens(RefreshTokenCommand cmd) {
     String tokenHash = hashToken(cmd.rawRefreshToken());
 
@@ -133,7 +133,7 @@ public class AuthService implements AuthModulePort {
 
   // ── Logout ─────────────────────────────────────────────────────────────
   @Override
-  @Transactional
+  @Transactional("connectionFactoryTransactionManager")
   public Mono<Void> logout(LogoutCommand cmd) {
     String tokenHash = hashToken(cmd.rawRefreshToken());
     Instant now = Instant.now();
@@ -151,7 +151,7 @@ public class AuthService implements AuthModulePort {
 
   // ── Logout All Devices ─────────────────────────────────────────────────
   @Override
-  @Transactional
+  @Transactional("connectionFactoryTransactionManager")
   public Mono<Integer> logoutAll(LogoutAllCommand cmd) {
     return refreshTokenRepository
             .revokeAllByUserId(cmd.userId(), Instant.now(), "LOGOUT_ALL")
@@ -198,7 +198,7 @@ public class AuthService implements AuthModulePort {
 
   // ── Revoke Session ─────────────────────────────────────────────────────
   @Override
-  @Transactional
+  @Transactional("connectionFactoryTransactionManager")
   public Mono<Void> revokeSession(UUID userId, UUID sessionId) {
     return refreshTokenRepository.findById(sessionId)
             .switchIfEmpty(Mono.error(new RuntimeException("SESSION_NOT_FOUND")))

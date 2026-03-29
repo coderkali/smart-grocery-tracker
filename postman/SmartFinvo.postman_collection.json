@@ -1,0 +1,590 @@
+{
+  "info": {
+    "_postman_id": "smartfinvo-collection-v1",
+    "name": "SmartFinvo API",
+    "description": "Complete API collection for SmartFinvo — Smart Grocery Tracker.\n\n## How to get an Access Token\n\nThis app uses **Google OAuth2** for authentication. There is no username/password login.\n\n**Steps:**\n1. Open a browser and go to: `{{base_url}}/oauth2/authorization/google`\n2. Complete the Google login flow\n3. Copy the `accessToken` from the response JSON\n4. In Postman, go to your environment and paste it into `access_token`\n5. All protected requests will automatically use it via the `Authorization: Bearer {{access_token}}` header\n\n## Typical Test Flow\n1. Get token via Google OAuth2\n2. Call `GET /auth/me` to verify you're logged in\n3. Create a category → copy the `id` into `category_id` variable\n4. Create an expense using that `category_id`\n5. List, update, delete expenses and categories\n6. Try AI features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "{{base_url}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/actuator/health",
+              "host": ["{{base_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Check if the app, database, and Redis are all healthy."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Google OAuth2 Login (Browser Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/oauth2/authorization/google",
+              "host": ["{{base_url}}"],
+              "path": ["oauth2", "authorization", "google"]
+            },
+            "description": "Open this URL in a browser — NOT in Postman. It redirects to Google login. After login, you get back an accessToken. Copy it into the `access_token` environment variable."
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Returns the currently authenticated user's profile. Use this to verify your token works."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Exchange a refresh token (stored in HttpOnly cookie) for a new access + refresh token pair. Returns a new accessToken."
+          }
+        },
+        {
+          "name": "List Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sessions"]
+            },
+            "description": "Returns all active login sessions for this user across all devices. Copy a session `id` into the `session_id` variable to revoke it."
+          }
+        },
+        {
+          "name": "Revoke Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "sessions", "{{session_id}}"]
+            },
+            "description": "Revokes one specific session by its UUID. Set `session_id` variable first."
+          }
+        },
+        {
+          "name": "Logout (Current Device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Logs out the current device only. Clears the refresh_token cookie."
+          }
+        },
+        {
+          "name": "Logout All Devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout/all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout", "all"]
+            },
+            "description": "Revokes ALL sessions for this user across every device. Use after a suspected account compromise."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Groceries\",\n  \"icon\": \"🛒\",\n  \"color\": \"#4CAF50\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"]
+            },
+            "description": "Creates a new expense category. After creating, copy the `id` from the response into the `category_id` environment variable."
+          }
+        },
+        {
+          "name": "List All Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories"]
+            },
+            "description": "Returns all active categories for the authenticated user."
+          }
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Returns a single category by UUID. Set `category_id` variable first."
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Groceries Updated\",\n  \"icon\": \"🛍️\",\n  \"color\": \"#2196F3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Updates name, icon, and color of an existing category. Set `category_id` variable first."
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", "{{category_id}}"]
+            },
+            "description": "Soft-deletes a category (sets is_active = false). Returns 204 No Content."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{category_id}}\",\n  \"amount\": 45.99,\n  \"currency\": \"USD\",\n  \"description\": \"Weekly grocery run\",\n  \"expense_date\": \"2026-03-29\",\n  \"payment_method\": \"credit_card\",\n  \"tags\": \"groceries,weekly\",\n  \"notes\": \"Bought from Whole Foods\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses"]
+            },
+            "description": "Creates a new expense. `category_id` must be a valid category UUID owned by the user. After creating, copy the `id` into the `expense_id` variable."
+          }
+        },
+        {
+          "name": "List All Expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses"]
+            },
+            "description": "Returns all expenses for the authenticated user, ordered by expense_date descending."
+          }
+        },
+        {
+          "name": "Get Expense by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses", "{{expense_id}}"]
+            },
+            "description": "Returns a single expense by UUID. Set `expense_id` variable first."
+          }
+        },
+        {
+          "name": "Filter Expenses by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses?start_date=2026-01-01&end_date=2026-03-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses"],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01",
+                  "description": "Start date inclusive (YYYY-MM-DD)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-03-31",
+                  "description": "End date inclusive (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Returns expenses whose expense_date falls within the given range. Both dates are inclusive."
+          }
+        },
+        {
+          "name": "Filter Expenses by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses?category_id={{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses"],
+              "query": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "UUID of the category to filter by"
+                }
+              ]
+            },
+            "description": "Returns all expenses belonging to a specific category. Set `category_id` variable first."
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{category_id}}\",\n  \"amount\": 52.50,\n  \"description\": \"Weekly grocery run — updated\",\n  \"expense_date\": \"2026-03-29\",\n  \"payment_method\": \"debit_card\",\n  \"tags\": \"groceries,weekly,updated\",\n  \"notes\": \"Price correction\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses", "{{expense_id}}"]
+            },
+            "description": "Updates an existing expense. Set `expense_id` variable first."
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses", "{{expense_id}}"]
+            },
+            "description": "Soft-deletes an expense. Returns 204 No Content."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Features",
+      "item": [
+        {
+          "name": "Natural Language Grocery Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"add 2L milk and a dozen eggs\",\n  \"listId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ai/search",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ai", "search"]
+            },
+            "description": "Parse free-text grocery commands into structured items using GPT-4o. Examples: 'add 2L milk and eggs', 'remove the bread', 'I need chicken for the weekend'."
+          }
+        },
+        {
+          "name": "Smart Item Suggestions (RAG)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"currentItems\": [\"milk\", \"eggs\"],\n  \"maxSuggestions\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ai/suggest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ai", "suggest"]
+            },
+            "description": "Analyses purchase history using RAG (pgvector similarity search) and suggests items the user typically buys but hasn't added yet."
+          }
+        },
+        {
+          "name": "Recipe Assistant (Streaming SSE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listId\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"userMessage\": \"what can I make with chicken and garlic?\",\n  \"sessionId\": \"session-abc-123\",\n  \"currentItems\": [\"chicken breast\", \"garlic\", \"olive oil\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ai/recipe",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ai", "recipe"]
+            },
+            "description": "Conversational recipe assistant with memory (stored in Redis). Response streams as Server-Sent Events. Use the same sessionId across multiple messages to maintain context."
+          }
+        },
+        {
+          "name": "Budget Analysis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period\": \"last_month\",\n  \"monthlyBudget\": 300.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ai/budget",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ai", "budget"]
+            },
+            "description": "Analyses spending using pgvector embeddings and GPT-4o. Period values: last_month, last_3_months, last_year. Returns insights with overspend warnings and suggestions."
+          }
+        }
+      ]
+    }
+  ]
+}
