@@ -27,7 +27,7 @@ echo "╔═══════════════════════�
 echo "║        SmartFinvo — Shutting Down        ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
-echo "⏱  Estimated time: 5-8 minutes"
+echo "⏱  Estimated time: 7-10 minutes"
 echo "💰 Cost after shutdown: \$0.00"
 echo ""
 echo "ℹ️  Budget alerts, IAM guardrails and WAF will stay active."
@@ -40,10 +40,36 @@ if [ "$confirm" != "yes" ]; then
   exit 0
 fi
 
-echo ""
-echo "▶ Deleting EKS cluster and nodes..."
+SCRIPT_DIR="$(dirname "$0")"
 
-cd "$(dirname "$0")/terraform"
+# ── Step 1: Delete Kubernetes resources ───────────────────────────
+# Must happen BEFORE terraform destroy.
+# K8s resources create AWS Load Balancer + EBS volume behind the scenes.
+# If we destroy the cluster first, those AWS resources become orphaned
+# (dangling, still billing you, and blocking VPC deletion).
+echo ""
+echo "▶ Step 1/2 — Deleting Kubernetes resources (Load Balancer + EBS)..."
+echo ""
+
+if kubectl get namespace smartfinvo &>/dev/null; then
+  kubectl delete -f "$SCRIPT_DIR/k8s/app/"      --ignore-not-found=true
+  kubectl delete -f "$SCRIPT_DIR/k8s/postgres/"  --ignore-not-found=true
+  kubectl delete -f "$SCRIPT_DIR/k8s/redis/"     --ignore-not-found=true
+  kubectl delete -f "$SCRIPT_DIR/k8s/configmap.yaml" --ignore-not-found=true
+  kubectl delete -f "$SCRIPT_DIR/k8s/secret.yaml"    --ignore-not-found=true
+  kubectl delete namespace smartfinvo --ignore-not-found=true
+  echo ""
+  echo "   Waiting 60s for AWS Load Balancer to be fully removed..."
+  sleep 60
+else
+  echo "   Namespace smartfinvo not found — skipping kubectl delete."
+fi
+
+# ── Step 2: Delete EKS cluster ────────────────────────────────────
+echo ""
+echo "▶ Step 2/2 — Deleting EKS cluster and nodes..."
+
+cd "$SCRIPT_DIR/terraform"
 
 # ── Notify: shutdown started ───────────────────────────────────────
 SNS_ARN=$(terraform output -raw billing_alert_sns_arn 2>/dev/null || echo "")
