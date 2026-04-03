@@ -63,7 +63,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
       target: runtime
     container_name: smartfinvo-app
     restart: unless-stopped

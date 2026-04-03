@@ -63,3 +63,8 @@ k8s/secret.yaml
 .terraform/
 terraform.tfstate
 terraform.tfstate.backup
+
+# New structure ignores
+kubernetes/base/secret.yaml
+compile.log
+.DS_Store

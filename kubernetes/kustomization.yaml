@@ -1,0 +1,15 @@
+# kubernetes/kustomization.yaml
+# Root kustomization - references the base layer
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - base/namespace.yaml
+  - base/configmap.yaml
+  - base/deployment.yaml
+  - base/service.yaml
+  - base/hpa.yaml
+  - base/postgres/deployment.yaml
+  - base/postgres/service.yaml
+  - base/redis/deployment.yaml
+  - base/redis/service.yaml

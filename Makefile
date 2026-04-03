@@ -3,7 +3,7 @@
 # Usage: make <target>
 # ══════════════════════════════════════════════════════════════════════════
 
-.PHONY: help up down logs test build clean db-shell redis-shell api-docs
+.PHONY: help up down logs test build clean db-shell redis-shell api-docs docker-build start stop deploy
 
 # ── Help ──────────────────────────────────────────────────────────────────
 help:
@@ -23,6 +23,10 @@ help:
 	@echo "  make api-docs    Open Swagger UI"
 	@echo "  make mailhog     Open MailHog web UI"
 	@echo "  make pgadmin     Start pgAdmin (then open localhost:5050)"
+	@echo "  make docker-build Build Docker image (docker/Dockerfile)"
+	@echo "  make start       Start AWS EKS cluster"
+	@echo "  make stop        Stop AWS EKS cluster"
+	@echo "  make deploy      Deploy app to EKS"
 	@echo ""
 
 # ── Docker ────────────────────────────────────────────────────────────────
@@ -77,3 +81,17 @@ mailhog:
 pgadmin:
 	docker compose --profile tools up -d pgadmin
 	@echo "PgAdmin: http://localhost:5050  (admin@smartgrocery.local / admin)"
+
+# ── Docker ─────────────────────────────────────────────────────────────────
+docker-build:
+	docker build -f docker/Dockerfile -t smartfinvo:latest .
+
+# ── AWS Cluster ────────────────────────────────────────────────────────────
+start:
+	bash scripts/start/start-cluster.sh
+
+stop:
+	bash scripts/stop/stop-cluster.sh
+
+deploy:
+	bash scripts/deploy/deploy.sh

@@ -163,73 +163,59 @@ Controller  ──→  Service  ──→  Repository  ──→  PostgreSQL
 
 ```
 smart-grocery-tracker/
+├── src/                    # Java source code (Spring Boot / hexagonal architecture)
+│   └── main/java/com/smartfinvo/
+│       ├── SmartFinvoApplication.java        # Entry point
+│       └── modules/
+│           ├── auth/                         # Auth module (OAuth2, JWT, sessions)
+│           ├── expense/                      # Expense tracking module
+│           └── ai/                           # AI module (NLP, RAG, recipe chat)
 │
-├── src/main/java/com/smartfinvo/
-│   ├── SmartFinvoApplication.java        # Entry point
-│   ├── SpringConfig.java                 # Global Spring config
-│   ├── config/
-│   │   └── SwaggerConfig.java            # OpenAPI / Swagger setup
-│   │
-│   └── modules/
-│       ├── auth/                         # Authentication module
-│       │   ├── api/AuthModulePort.java   # Public interface (port)
-│       │   ├── application/AuthService.java
-│       │   ├── domain/                   # UserAccount, RefreshToken
-│       │   └── infrastructure/
-│       │       ├── web/                  # AuthController, SecurityConfig
-│       │       ├── persistence/          # JPA repositories
-│       │       └── cache/               # Redis token cache
-│       │
-│       ├── expense/                      # Expense tracking module
-│       │   ├── application/             # ExpenseService, CategoryService
-│       │   ├── domain/                  # Expense, ExpenseCategory
-│       │   └── infrastructure/
-│       │       ├── web/                 # ExpenseController, CategoryController
-│       │       │   └── dto/             # Request/Response DTOs
-│       │       └── persistence/
-│       │
-│       └── ai/                          # AI features module
-│           ├── api/AiModulePort.java
-│           ├── application/AiService.java
-│           └── infrastructure/
-│               ├── web/AiController.java
-│               ├── config/              # AI config, prompts
-│               ├── memory/              # Redis chat memory
-│               ├── tools/               # GPT function tools
-│               └── seeder/              # Data seeder
+├── terraform/              # Infrastructure as Code (AWS EKS, CI/CD pipeline)
+│   ├── cicd/               # CodeBuild + CodePipeline + S3 artifacts
+│   └── infrastructure/     # EKS cluster, VPC, IAM, budget, monitoring
 │
-├── src/main/resources/
-│   ├── application.yml
-│   ├── application-local.yml
-│   └── db/migration/                    # Flyway migrations
-│       ├── auth/    V1__create_auth_tables.sql
-│       ├── user/    V2__create_user_tables.sql
-│       ├── ai/      V3__ai_module_schema.sql
-│       └── expense/ V4__create_expense_tables.sql
+├── kubernetes/             # K8s manifests (deployment, service, HPA, etc.)
+│   ├── base/               # Base manifests applied to all environments
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   ├── hpa.yaml
+│   │   ├── postgres/       # PostgreSQL deployment + service
+│   │   └── redis/          # Redis deployment + service
+│   └── overlays/           # Environment-specific patches (future use)
+│       ├── dev/
+│       ├── staging/
+│       └── production/
 │
-├── k8s/                                 # Kubernetes manifests
-│   ├── namespace.yaml
-│   ├── configmap.yaml
-│   ├── app/        deployment, service, hpa
-│   ├── postgres/   deployment, service
-│   └── redis/      deployment, service
+├── docker/                 # Dockerfile + PostgreSQL init scripts
+│   ├── Dockerfile          # Multi-stage build (deps → builder → runtime)
+│   └── postgres-init.sql   # DB initialization
 │
-├── terraform/                           # Infrastructure as Code
-│   ├── main.tf                          # AWS provider config
-│   ├── variables.tf                     # All configurable values
-│   ├── eks.tf                           # EKS cluster + node group
-│   ├── data.tf                          # Data sources (VPC, IAM roles)
-│   ├── budget.tf                        # Cost alerts and guardrails
-│   ├── security.tf                      # WAF + IAM deny policies
-│   ├── notifications.tf                 # EventBridge email alerts
-│   └── output.tf                        # Terraform outputs
+├── scripts/                # Shell scripts organized by purpose
+│   ├── start/              # start-cluster.sh — Start EKS cluster (~10 min)
+│   ├── stop/               # stop-cluster.sh  — Stop EKS cluster (cost saving)
+│   ├── deploy/             # deploy.sh + pre-deploy-health-check.sh
+│   ├── setup/              # setup-aws.sh — One-time AWS account setup
+│   ├── maintenance/        # Backups, cleanup (future)
+│   ├── testing/            # Test runners (future)
+│   └── monitoring/         # Health checks, alerts (future)
 │
-├── setup.sh                             # ⚡ One-time AWS setup
-├── start.sh                             # ▶️  Start AWS cluster
-├── stop.sh                              # ⏹️  Stop AWS cluster (charges = $0)
-├── Dockerfile                           # Multi-stage Docker build
-├── docker-compose.yml                   # Local infra (postgres + redis)
-└── Makefile                             # Convenience commands
+├── ci-cd/                  # CI/CD pipeline files
+│   └── buildspec.yml       # AWS CodeBuild build specification
+│
+├── docs/                   # All documentation
+│   ├── RUNBOOK.md          # Daily operations, known issues & fixes
+│   ├── EXPENSE-API-TESTING-GUIDE.md
+│   ├── architecture/       # COMPLETE-ARCHITECTURE-GUIDE.md
+│   └── guides/             # AI-Dependency-Issue.md, SETUP-MAVEN-CREDENTIALS.md
+│
+├── postman/                # API test collections (import into Postman)
+├── pom.xml                 # Maven build (must stay in root)
+├── docker-compose.yml      # Local development with PostgreSQL + Redis
+├── Makefile                # Common commands (make help)
+└── .env.example            # Environment variable template
 ```
 
 ---
@@ -311,9 +297,9 @@ docker-compose down -v     # stop + delete all data
 ```
 Your Mac
    │
-   ├── ./setup.sh   → creates permanent AWS account protections (once ever)
-   ├── ./start.sh   → creates EKS cluster + node (~10 min)
-   └── ./stop.sh    → deletes cluster, charges drop to $0 (~5 min)
+   ├── ./scripts/setup/setup-aws.sh          → creates permanent AWS account protections (once ever)
+   ├── ./scripts/start/start-cluster.sh      → creates EKS cluster + node (~10 min)
+   └── ./scripts/stop/stop-cluster.sh        → deletes cluster, charges drop to $0 (~5 min)
 ```
 
 The app runs on **AWS EKS** (Elastic Kubernetes Service):
@@ -344,8 +330,8 @@ aws configure
 ### First Time Only — One-Time Setup
 
 ```bash
-chmod +x setup.sh start.sh stop.sh
-./setup.sh
+chmod +x scripts/setup/setup-aws.sh scripts/start/start-cluster.sh scripts/stop/stop-cluster.sh scripts/deploy/deploy.sh scripts/deploy/pre-deploy-health-check.sh
+./scripts/setup/setup-aws.sh
 ```
 
 This creates permanent protections (Budget, WAF, IAM, SNS) that **never get deleted** by `./stop.sh`.
@@ -359,7 +345,7 @@ This creates permanent protections (Budget, WAF, IAM, SNS) that **never get dele
 ### ▶️ Start — Beginning of Work Session
 
 ```bash
-./start.sh
+./scripts/start/start-cluster.sh
 ```
 
 **What happens:**
@@ -380,7 +366,7 @@ kubectl get pods -A       # should show system pods Running
 ### ⏹️ Stop — End of Work Session
 
 ```bash
-./stop.sh
+./scripts/stop/stop-cluster.sh
 ```
 
 **What happens:**
@@ -392,7 +378,7 @@ kubectl get pods -A       # should show system pods Running
 
 ⏱ Takes ~5–8 minutes. Cost after stopping: **$0.00**
 
-> ⚠️ Always run `./stop.sh` at the end of your session. Leaving it running overnight = ~$3.60 in charges.
+> ⚠️ Always run `./scripts/stop/stop-cluster.sh` at the end of your session. Leaving it running overnight = ~$3.60 in charges.
 
 ### Verify Everything is Deleted (AWS Console)
 
@@ -529,7 +515,7 @@ EBS disk:           $ 2.00/month
 Worst case         ~$108/month
 ```
 
-> 💡 **Always run `./stop.sh` at end of session.** Budget alert fires at $80, IAM locks down at $100.
+> 💡 **Always run `./scripts/stop/stop-cluster.sh` at end of session.** Budget alert fires at $80, IAM locks down at $100.
 
 ---
 
