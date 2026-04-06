@@ -53,6 +53,19 @@ public interface ExpenseRepository extends R2dbcRepository<Expense, UUID> {
     Mono<Long> countByUserIdAndCategoryIdAndDeletedAtIsNull(UUID userId, UUID categoryId);
 
     /**
+     * Sum ALL expense amounts for a user within a date range (across all categories).
+     * Used by AnalyticsService to get the overall total for the insights AI prompt.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(amount), 0) FROM expense
+            WHERE user_id    = :userId
+            AND   expense_date >= :startDate
+            AND   expense_date <= :endDate
+            AND   deleted_at IS NULL
+            """)
+    Mono<BigDecimal> sumTotalByUserIdAndDateRange(UUID userId, LocalDate startDate, LocalDate endDate);
+
+    /**
      * Sum expense amounts for a user in a category within a date range.
      * Used by BudgetService to calculate currentSpent for each budget.
      * COALESCE ensures 0 is returned when there are no matching rows (not null).

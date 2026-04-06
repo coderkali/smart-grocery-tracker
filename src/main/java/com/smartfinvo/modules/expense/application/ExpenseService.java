@@ -9,9 +9,11 @@ import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import com.smartfinvo.modules.expense.infrastructure.web.dto.BulkCreateExpenseRequest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -145,6 +147,45 @@ public class ExpenseService {
                 })
                 .doOnSuccess(v -> log.info("Expense deleted: {}", expenseId))
                 .doOnError(err -> log.error("Failed to delete expense", err));
+    }
+
+    /**
+     * Bulk-create multiple expenses in a single transaction.
+     * All items share the same receiptDate, vendor, and receiptImageUrl from the request.
+     * Uses saveAll() which issues one INSERT per row inside the same transaction —
+     * if any row fails validation or DB constraint, the whole batch is rolled back.
+     * Returns the saved entities collected into a list so the controller can build
+     * BulkExpenseResponse with a count and the full list of created records.
+     */
+    @Transactional
+    public Mono<List<Expense>> bulkCreateExpenses(UUID userId, BulkCreateExpenseRequest request) {
+        log.info("Bulk creating {} expenses for userId={}", request.getItems().size(), userId);
+
+        // Build one Expense entity per item — shared fields (date, vendor, receipt) applied to all
+        List<Expense> expenses = request.getItems().stream()
+                .map(item -> Expense.builder()
+                        .id(UUID.randomUUID())
+                        .userId(userId)
+                        .categoryId(item.getCategoryId())
+                        .amount(item.getAmount())
+                        .currency(item.getCurrency() != null ? item.getCurrency() : "USD")
+                        .description(item.getDescription())
+                        .expenseDate(request.getReceiptDate())
+                        // vendor stored in paymentMethod field — closest available column
+                        .paymentMethod(request.getVendor())
+                        .receiptUrl(request.getReceiptImageUrl())
+                        .version(0)
+                        .createdAt(OffsetDateTime.now())
+                        .updatedAt(OffsetDateTime.now())
+                        .build())
+                .toList();
+
+        // saveAll() is inherited from ReactiveCrudRepository — runs inside the @Transactional boundary
+        // collectList() collects the Flux<Expense> into Mono<List<Expense>> for the response
+        return expenseRepository.saveAll(expenses)
+                .collectList()
+                .doOnSuccess(saved -> log.info("Bulk created {} expenses for userId={}", saved.size(), userId))
+                .doOnError(err -> log.error("Bulk create failed for userId={} error={}", userId, err.getMessage()));
     }
 
     /**

@@ -2,6 +2,8 @@ package com.smartfinvo.modules.expense.infrastructure.web;
 
 import com.smartfinvo.modules.expense.application.ExpenseService;
 import com.smartfinvo.modules.expense.domain.Expense;
+import com.smartfinvo.modules.expense.infrastructure.web.dto.BulkCreateExpenseRequest;
+import com.smartfinvo.modules.expense.infrastructure.web.dto.BulkExpenseResponse;
 import com.smartfinvo.modules.expense.infrastructure.web.dto.CreateExpenseRequest;
 import com.smartfinvo.modules.expense.infrastructure.web.dto.UpdateExpenseRequest;
 import com.smartfinvo.modules.expense.infrastructure.web.dto.ExpenseResponse;
@@ -248,6 +250,49 @@ public class ExpenseController {
         return expenseService.deleteExpense(id, userId)
                 .then(Mono.just(ResponseEntity.noContent().<Void>build()))
                 .doOnError(err -> log.error("Error deleting expense", err));
+    }
+
+    /**
+     * POST /api/v1/expenses/bulk — Create multiple expenses in one transaction
+     * All items share the same receipt_date, vendor, and receipt_image_url.
+     * The entire batch is rolled back if any item fails a DB constraint.
+     * Must be declared before the generic @PostMapping to avoid route conflict.
+     */
+    @Operation(
+            summary = "Bulk create expenses",
+            description = """
+                    Creates multiple expense records in a single database transaction.
+                    All items share `receipt_date`, `vendor`, and `receipt_image_url`.
+                    If any item fails (e.g. invalid category), the entire batch is rolled back.
+                    Maximum 100 items per request.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "All expenses created",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = BulkExpenseResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error — check items array and receipt_date"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    @PostMapping("/bulk")
+    public Mono<ResponseEntity<BulkExpenseResponse>> bulkCreateExpenses(
+            @Valid @RequestBody BulkCreateExpenseRequest request,
+            Principal principal) {
+
+        UUID userId = UUID.fromString(principal.getName());
+
+        return expenseService
+                .bulkCreateExpenses(userId, request)
+                .map(savedExpenses -> {
+                    BulkExpenseResponse response = BulkExpenseResponse.builder()
+                            .createdCount(savedExpenses.size())
+                            .expenses(savedExpenses.stream().map(this::toResponse).toList())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                })
+                .onErrorResume(error -> {
+                    log.error("POST /expenses/bulk — error userId={} error={}", userId, error.getMessage());
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                });
     }
 
     /**
