@@ -454,6 +454,303 @@
       ]
     },
     {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "Returns the full profile of the authenticated user (id, email, display_name, avatar_url, status, onboarding_step, version, timestamps)."
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"display_name\": \"Jane Doe\",\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"avatar_url\": \"https://storage.example.com/avatars/jane.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "Partially updates the authenticated user's profile. All fields are optional — only provided fields are changed. Returns the full updated profile."
+          }
+        },
+        {
+          "name": "Get User by ID (Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            },
+            "description": "Admin-only: fetches any user's profile by UUID. Requires is_admin = true on the calling user's account. Set `user_id` variable to the target user's UUID. Returns 403 for non-admin callers."
+          }
+        },
+        {
+          "name": "Delete My Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmDeletion\": true,\n  \"reason\": \"No longer needed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            },
+            "description": "Soft-deletes the authenticated user's account and revokes ALL active sessions. `confirmDeletion` must be true — sending false or omitting it returns 400. Returns 204 No Content. Discard your JWT immediately after this call."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budgets",
+      "item": [
+        {
+          "name": "Create Budget",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Monthly Groceries\",\n  \"category_id\": \"{{category_id}}\",\n  \"limit_amount\": 300.00,\n  \"currency\": \"USD\",\n  \"period\": \"MONTHLY\",\n  \"start_date\": \"2026-04-01\",\n  \"alert_threshold\": 80,\n  \"alert_enabled\": true,\n  \"alert_channels\": [\"email\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/budgets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "budgets"]
+            },
+            "description": "Creates a new spending budget for a category. `end_date` is optional — if omitted it is inferred from `period` (MONTHLY adds 1 month, QUARTERLY adds 3, YEARLY adds 12). After creating, copy the `id` into the `budget_id` variable. `current_spent` will be 0 on creation."
+          }
+        },
+        {
+          "name": "List All Budgets",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/budgets",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "budgets"]
+            },
+            "description": "Returns all active budgets for the user, ordered by creation date descending. Each budget includes live `current_spent`, `remaining_amount`, `percentage_used`, and `alert_status` calculated from matching expense records."
+          }
+        },
+        {
+          "name": "Get Budget by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/budgets/{{budget_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "budgets", "{{budget_id}}"]
+            },
+            "description": "Returns a single budget with real-time spending figures. `alert_status` is OK, WARNING (>= threshold), or EXCEEDED (>= 100%). Set `budget_id` variable first."
+          }
+        },
+        {
+          "name": "Update Budget",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"limit_amount\": 350.00,\n  \"alert_threshold\": 75,\n  \"alert_enabled\": true,\n  \"alert_channels\": [\"email\", \"push\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/budgets/{{budget_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "budgets", "{{budget_id}}"]
+            },
+            "description": "Partially updates a budget. Only `name`, `limit_amount`, `alert_threshold`, `alert_enabled`, `alert_channels` can be changed. Category and dates are fixed after creation. Set `budget_id` variable first."
+          }
+        },
+        {
+          "name": "Delete Budget",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/budgets/{{budget_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "budgets", "{{budget_id}}"]
+            },
+            "description": "Soft-deletes a budget. Existing expenses are not affected. Returns 204 No Content. Set `budget_id` variable first."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses (Bulk)",
+      "item": [
+        {
+          "name": "Bulk Create Expenses",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_date\": \"2026-04-05\",\n  \"vendor\": \"Whole Foods Market\",\n  \"receipt_image_url\": \"https://storage.example.com/receipts/wf-20260405.jpg\",\n  \"items\": [\n    {\n      \"category_id\": \"{{category_id}}\",\n      \"amount\": 12.49,\n      \"description\": \"Organic whole milk 2L\",\n      \"currency\": \"USD\"\n    },\n    {\n      \"category_id\": \"{{category_id}}\",\n      \"amount\": 5.99,\n      \"description\": \"Free range eggs x12\",\n      \"currency\": \"USD\"\n    },\n    {\n      \"category_id\": \"{{category_id}}\",\n      \"amount\": 3.49,\n      \"description\": \"Sourdough bread loaf\",\n      \"currency\": \"USD\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/bulk",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "expenses", "bulk"]
+            },
+            "description": "Creates up to 100 expense records in one transaction. All items share `receipt_date`, `vendor`, and `receipt_image_url`. If any item fails, the entire batch is rolled back. Returns `created_count` and the full list of created expense records."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Expense Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/summary?start_date=2026-04-01&end_date=2026-04-30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "summary"],
+              "query": [
+                { "key": "start_date", "value": "2026-04-01", "description": "Start date inclusive (YYYY-MM-DD)" },
+                { "key": "end_date",   "value": "2026-04-30", "description": "End date inclusive (YYYY-MM-DD)" }
+              ]
+            },
+            "description": "Returns total spending, count, average per expense, and a breakdown by category for the given date range. The `by_category` map is keyed by category UUID."
+          }
+        },
+        {
+          "name": "Spending Trends (Daily)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/trends?start_date=2026-04-01&end_date=2026-04-30&group_by=day",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "trends"],
+              "query": [
+                { "key": "start_date", "value": "2026-04-01", "description": "Start date inclusive (YYYY-MM-DD)" },
+                { "key": "end_date",   "value": "2026-04-30", "description": "End date inclusive (YYYY-MM-DD)" },
+                { "key": "group_by",   "value": "day",         "description": "Granularity: day | week | month" }
+              ]
+            },
+            "description": "Returns a time series of spending grouped by day. Change `group_by` to `week` or `month` for coarser granularity. Buckets with no spending are omitted (sparse series)."
+          }
+        },
+        {
+          "name": "Spending Trends (Monthly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/trends?start_date=2026-01-01&end_date=2026-04-30&group_by=month",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "trends"],
+              "query": [
+                { "key": "start_date", "value": "2026-01-01", "description": "Start date inclusive (YYYY-MM-DD)" },
+                { "key": "end_date",   "value": "2026-04-30", "description": "End date inclusive (YYYY-MM-DD)" },
+                { "key": "group_by",   "value": "month",       "description": "Granularity: day | week | month" }
+              ]
+            },
+            "description": "Same as Spending Trends but grouped by month. Each data point's `date` is the first day of the month (e.g. 2026-04-01)."
+          }
+        },
+        {
+          "name": "AI Spending Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/insights?start_date=2026-04-01&end_date=2026-04-30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "insights"],
+              "query": [
+                { "key": "start_date", "value": "2026-04-01", "description": "Start date inclusive (YYYY-MM-DD)" },
+                { "key": "end_date",   "value": "2026-04-30", "description": "End date inclusive (YYYY-MM-DD)" }
+              ]
+            },
+            "description": "Generates 2–4 AI-powered insights using GPT-4o + RAG on purchase history. Insight types: OVERSPEND, SAVING, PATTERN, ALERT. Expect 3–5 seconds response time. Returns 503 if the AI service is unavailable."
+          }
+        },
+        {
+          "name": "Budget vs Actual",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/analytics/budget-vs-actual?start_date=2026-04-01&end_date=2026-04-30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "analytics", "budget-vs-actual"],
+              "query": [
+                { "key": "start_date", "value": "2026-04-01", "description": "Start date inclusive (YYYY-MM-DD)" },
+                { "key": "end_date",   "value": "2026-04-30", "description": "End date inclusive (YYYY-MM-DD)" }
+              ]
+            },
+            "description": "Compares each active budget against actual spending within the date range. Each row shows `budgeted`, `actual`, `variance` (budgeted − actual), `variance_percent`, and `status` (UNDER or OVER). Returns an empty report if the user has no budgets."
+          }
+        }
+      ]
+    },
+    {
       "name": "AI Features",
       "item": [
         {
