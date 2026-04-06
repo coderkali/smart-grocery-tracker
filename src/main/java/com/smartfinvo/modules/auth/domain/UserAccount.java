@@ -78,6 +78,11 @@ public class UserAccount {
     @Column("deleted_at")
     private Instant deletedAt;
 
+    // Admin flag — grants access to privileged endpoints such as GET /api/v1/users/{userId}
+    // Default false; set manually via DB or a future admin-management flow
+    @Column("is_admin")
+    private Boolean isAdmin;
+
     // ── Business logic methods ─────────────────────────────────────────────
     // Keep business rules on the entity itself — not scattered in services
 

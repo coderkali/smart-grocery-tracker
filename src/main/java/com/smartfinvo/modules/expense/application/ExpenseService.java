@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -144,6 +145,20 @@ public class ExpenseService {
                 })
                 .doOnSuccess(v -> log.info("Expense deleted: {}", expenseId))
                 .doOnError(err -> log.error("Failed to delete expense", err));
+    }
+
+    /**
+     * Sum expense amounts for a category within a date range.
+     * Called by BudgetService to compute currentSpent for each budget.
+     * Returns BigDecimal.ZERO if no expenses match (defaultIfEmpty handles null from COALESCE).
+     */
+    public Mono<BigDecimal> sumByCategoryAndDateRange(
+            UUID userId, UUID categoryId, LocalDate startDate, LocalDate endDate) {
+        log.debug("Summing expenses userId={} categoryId={} {} to {}", userId, categoryId, startDate, endDate);
+        return expenseRepository
+                .sumAmountByUserIdAndCategoryIdAndDateRange(userId, categoryId, startDate, endDate)
+                .map(sum -> Objects.requireNonNullElse(sum, BigDecimal.ZERO))
+                .defaultIfEmpty(BigDecimal.ZERO);
     }
 
     /**
