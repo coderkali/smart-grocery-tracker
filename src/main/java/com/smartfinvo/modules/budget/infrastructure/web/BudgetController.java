@@ -183,16 +183,19 @@ public class BudgetController {
             @PathVariable UUID budgetId,
             @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
+        Mono<ResponseEntity<Void>> noContent = Mono.just(ResponseEntity.noContent().build());
         return budgetService
                 .deleteBudget(userId, budgetId)
-                .then(Mono.just(ResponseEntity.<Void>noContent().build()))
+                .then(noContent)
                 .onErrorResume(error -> {
                     if ("BUDGET_NOT_FOUND".equals(error.getMessage())) {
                         log.warn("DELETE /budgets/{} — not found userId={}", budgetId, userId);
-                        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+                        ResponseEntity<Void> r = ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                        return Mono.just(r);
                     }
                     log.error("DELETE /budgets/{} — error userId={} error={}", budgetId, userId, error.getMessage());
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                    ResponseEntity<Void> r = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    return Mono.just(r);
                 });
     }
 }

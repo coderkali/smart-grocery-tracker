@@ -35,7 +35,7 @@ public class BudgetService {
 
     // ── POST /api/v1/budgets ──────────────────────────────────────────────
     // currentSpent is always 0 on creation — no expenses exist yet for this budget
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<BudgetResponse> createBudget(UUID userId, CreateBudgetRequest request) {
         log.debug("Creating budget userId={} name={}", userId, request.getName());
 
@@ -92,7 +92,7 @@ public class BudgetService {
 
     // ── PATCH /api/v1/budgets/{budgetId} ──────────────────────────────────
     // Partial update — only non-null fields in the request are applied
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<BudgetResponse> updateBudget(UUID userId, UUID budgetId, UpdateBudgetRequest request) {
         log.debug("Updating budget budgetId={} userId={}", budgetId, userId);
 
@@ -125,7 +125,7 @@ public class BudgetService {
 
     // ── DELETE /api/v1/budgets/{budgetId} ─────────────────────────────────
     // Soft-delete in one UPDATE statement — no load-then-save needed
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<Void> deleteBudget(UUID userId, UUID budgetId) {
         log.debug("Deleting budget budgetId={} userId={}", budgetId, userId);
 

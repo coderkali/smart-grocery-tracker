@@ -52,13 +52,13 @@ CREATE TABLE budget (
 );
 
 -- Fetch all budgets for a user (most common query)
-CREATE INDEX idx_budget_user       ON budget (user_id)
+CREATE INDEX idx_budget_by_user       ON budget (user_id)
     WHERE deleted_at IS NULL;
 
 -- Filter budgets by category (used when calculating budget-vs-actual)
-CREATE INDEX idx_budget_category   ON budget (user_id, category_id)
+CREATE INDEX idx_budget_by_category   ON budget (user_id, category_id)
     WHERE deleted_at IS NULL;
 
 -- Filter active budgets by date range (used in analytics)
-CREATE INDEX idx_budget_dates      ON budget (user_id, start_date, end_date)
+CREATE INDEX idx_budget_by_dates      ON budget (user_id, start_date, end_date)
     WHERE deleted_at IS NULL;

@@ -49,6 +49,7 @@ spring:
       - classpath:db/migration/notification
       - classpath:db/migration/cardsync
       - classpath:db/migration/ai
+      - classpath:db/migration/budget
     baseline-on-migrate: false
     out-of-order: false
     validate-on-migrate: false

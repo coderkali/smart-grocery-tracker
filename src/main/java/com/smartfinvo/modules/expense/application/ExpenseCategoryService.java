@@ -22,12 +22,11 @@ public class ExpenseCategoryService {
     /**
      * Create a new category for a user
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<ExpenseCategory> createCategory(UUID userId, ExpenseCategory category) {
         log.info("Creating category for user: {} with name: {}", userId, category.getName());
 
-        // Set defaults
-        category.setId(UUID.randomUUID());
+        // Set defaults — do NOT set id; R2DBC needs id=null to treat this as INSERT
         category.setUserId(userId);
         category.setIsActive(true);
         category.setCreatedAt(OffsetDateTime.now());
@@ -67,7 +66,7 @@ public class ExpenseCategoryService {
     /**
      * Update a category
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<ExpenseCategory> updateCategory(UUID categoryId, UUID userId, ExpenseCategory updateData) {
         log.info("Updating category: {} for user: {}", categoryId, userId);
 
@@ -94,7 +93,7 @@ public class ExpenseCategoryService {
     /**
      * Deactivate a category
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<ExpenseCategory> deactivateCategory(UUID categoryId, UUID userId) {
         log.info("Deactivating category: {} for user: {}", categoryId, userId);
 

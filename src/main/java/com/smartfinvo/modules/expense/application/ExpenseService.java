@@ -27,12 +27,11 @@ public class ExpenseService {
     /**
      * Create a new expense
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<Expense> createExpense(UUID userId, Expense expense) {
         log.info("Creating expense for user: {}", userId);
 
-        // Set defaults
-        expense.setId(UUID.randomUUID());
+        // Set defaults — do NOT set id; R2DBC needs id=null to treat this as INSERT
         expense.setUserId(userId);
         expense.setCreatedAt(OffsetDateTime.now());
         expense.setUpdatedAt(OffsetDateTime.now());
@@ -96,7 +95,7 @@ public class ExpenseService {
     /**
      * Update an expense
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<Expense> updateExpense(UUID expenseId, UUID userId, Expense updateData) {
         log.info("Updating expense: {} for user: {}", expenseId, userId);
 
@@ -136,7 +135,7 @@ public class ExpenseService {
     /**
      * Delete expense (soft delete)
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<Void> deleteExpense(UUID expenseId, UUID userId) {
         log.info("Deleting expense: {} for user: {}", expenseId, userId);
 
@@ -157,14 +156,13 @@ public class ExpenseService {
      * Returns the saved entities collected into a list so the controller can build
      * BulkExpenseResponse with a count and the full list of created records.
      */
-    @Transactional
+    @Transactional("connectionFactoryTransactionManager")
     public Mono<List<Expense>> bulkCreateExpenses(UUID userId, BulkCreateExpenseRequest request) {
         log.info("Bulk creating {} expenses for userId={}", request.getItems().size(), userId);
 
         // Build one Expense entity per item — shared fields (date, vendor, receipt) applied to all
         List<Expense> expenses = request.getItems().stream()
                 .map(item -> Expense.builder()
-                        .id(UUID.randomUUID())
                         .userId(userId)
                         .categoryId(item.getCategoryId())
                         .amount(item.getAmount())

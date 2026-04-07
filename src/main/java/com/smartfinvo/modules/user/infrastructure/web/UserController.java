@@ -228,17 +228,19 @@ public class UserController {
             @Valid @RequestBody DeleteAccountRequest request,
             @Parameter(hidden = true) @RequestAttribute("userId") UUID userId) {
 
+        Mono<ResponseEntity<Void>> noContent = Mono.just(ResponseEntity.noContent().build());
         return userService
                 .deleteAccount(userId, request)
-                // Void return — 204 No Content, no body
-                .then(Mono.just(ResponseEntity.<Void>noContent().build()))
+                .then(noContent)
                 .onErrorResume(error -> {
                     if ("USER_NOT_FOUND".equals(error.getMessage())) {
                         log.warn("DELETE /users/me — user not found userId={}", userId);
-                        return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+                        ResponseEntity<Void> r = ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                        return Mono.just(r);
                     }
                     log.error("DELETE /users/me — unexpected error userId={} error={}", userId, error.getMessage());
-                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                    ResponseEntity<Void> r = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                    return Mono.just(r);
                 });
     }
 }
